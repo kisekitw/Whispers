@@ -38,15 +38,22 @@ const HEAD = `<!DOCTYPE html>
   <title>親師悄悄話 | 後台管理</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap4.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <!-- jQuery + DataTables + Chart.js must load BEFORE any inline scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap4.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
     body, .nav-sidebar .nav-link p, .brand-text { font-family: 'Noto Sans TC', sans-serif !important; }
     .trial-info { font-size: 0.7rem; display: block; }
+    #logsTable tbody tr:hover { background: #f0f4ff; }
   </style>
 </head>`;
 
+// Bootstrap + AdminLTE loaded at body end (after DOM)
 const SCRIPTS = `
-  <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>`;
 
@@ -170,7 +177,7 @@ function dashboardContent(stats: {
   totalUsers: number; teachers: number; parents: number;
   todayActive: number; recentLogs: any[];
 }, flash: string): string {
-  const logsRows = stats.recentLogs.map(log => {
+  const logsRows = stats.recentLogs.map((log) => {
     const statusBadge = log.status === 'success'
       ? '<span class="badge badge-success">成功</span>'
       : log.status === 'error'
@@ -182,13 +189,16 @@ function dashboardContent(stats: {
         ? '<span class="badge badge-warning">家長</span>'
         : '<span class="badge badge-light text-dark">-</span>';
     const preview = escHtml((log.output || log.error || '-').substring(0, 80));
-    return `<tr>
+    const dataJson = escHtml(JSON.stringify(log));
+    const userType = escHtml(log.userType || '');
+    const statusVal = escHtml(log.status || '');
+    return `<tr style="cursor:pointer" data-log="${dataJson}" data-usertype="${userType}" data-status="${statusVal}" onclick="showLogDetail(this)">
       <td style="white-space:nowrap">${fmtDate(log.timestamp)}</td>
       <td>${typeBadge}</td>
       <td>${escHtml(log.action || '-')}</td>
       <td>${statusBadge}</td>
-      <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
-          title="${escHtml((log.output || log.error || '').substring(0, 300))}">${preview}</td>
+      <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${preview}</td>
+      <td><span class="btn btn-xs btn-outline-secondary"><i class="fas fa-eye"></i></span></td>
     </tr>`;
   }).join('');
 
@@ -252,21 +262,39 @@ function dashboardContent(stats: {
         <div class="col-md-8">
           <div class="card card-primary card-outline">
             <div class="card-header">
-              <h3 class="card-title">最近操作記錄（最新 10 筆）</h3>
+              <h3 class="card-title">操作記錄（最新 50 筆）</h3>
               <div class="card-tools">
                 <a href="/admin/dashboard" class="btn btn-sm btn-outline-secondary">
                   <i class="fas fa-sync-alt"></i> 重新整理
                 </a>
               </div>
             </div>
-            <div class="card-body p-0">
+            <!-- Filter toolbar -->
+            <div class="card-body pb-0 pt-2">
+              <div class="d-flex flex-wrap align-items-center" style="gap:8px">
+                <span class="text-muted small mr-1">類型：</span>
+                <div class="btn-group btn-group-sm" id="typeFilter">
+                  <button class="btn btn-primary active" data-val="user">老師 ＋ 家長</button>
+                  <button class="btn btn-outline-primary" data-val="teacher">老師</button>
+                  <button class="btn btn-outline-warning" data-val="parent">家長</button>
+                  <button class="btn btn-outline-secondary" data-val="all">全部</button>
+                </div>
+                <span class="text-muted small ml-3 mr-1">狀態：</span>
+                <div class="btn-group btn-group-sm" id="statusFilter">
+                  <button class="btn btn-secondary active" data-val="all">全部</button>
+                  <button class="btn btn-outline-success" data-val="success">成功</button>
+                  <button class="btn btn-outline-danger" data-val="error">錯誤</button>
+                </div>
+              </div>
+            </div>
+            <div class="card-body p-0 mt-2">
               <div class="table-responsive">
-                <table class="table table-hover table-sm mb-0">
+                <table id="logsTable" class="table table-hover table-sm mb-0" style="width:100%">
                   <thead class="thead-light">
-                    <tr><th>時間</th><th>類型</th><th>動作</th><th>狀態</th><th>內容預覽</th></tr>
+                    <tr><th>時間</th><th>類型</th><th>動作</th><th>狀態</th><th>內容預覽</th><th></th></tr>
                   </thead>
                   <tbody>
-                    ${logsRows || '<tr><td colspan="5" class="text-center text-muted py-3">暫無記錄</td></tr>'}
+                    ${logsRows || '<tr><td colspan="6" class="text-center text-muted py-3">暫無記錄</td></tr>'}
                   </tbody>
                 </table>
               </div>
@@ -276,8 +304,50 @@ function dashboardContent(stats: {
       </div>
     </div>
   </section>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <!-- Log Detail Modal -->
+  <div class="modal fade" id="logDetailModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">
+            <i class="fas fa-file-alt mr-2"></i>操作記錄詳細
+          </h5>
+          <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+        </div>
+        <div class="modal-body">
+          <table class="table table-sm table-bordered mb-3">
+            <tbody>
+              <tr><th style="width:120px">時間</th><td id="ld-time"></td></tr>
+              <tr><th>使用者 ID</th><td id="ld-userId" class="text-monospace small"></td></tr>
+              <tr><th>類型</th><td id="ld-userType"></td></tr>
+              <tr><th>動作</th><td id="ld-action"></td></tr>
+              <tr><th>狀態</th><td id="ld-status"></td></tr>
+              <tr><th>模型</th><td id="ld-model"></td></tr>
+            </tbody>
+          </table>
+          <div id="ld-input-section">
+            <h6 class="font-weight-bold">輸入內容</h6>
+            <pre id="ld-input" class="bg-light p-3 rounded small" style="white-space:pre-wrap;word-break:break-all;max-height:200px;overflow-y:auto"></pre>
+          </div>
+          <div id="ld-output-section" class="mt-3">
+            <h6 class="font-weight-bold">AI 輸出</h6>
+            <pre id="ld-output" class="bg-light p-3 rounded small" style="white-space:pre-wrap;word-break:break-all;max-height:300px;overflow-y:auto"></pre>
+          </div>
+          <div id="ld-error-section" class="mt-3" style="display:none">
+            <h6 class="font-weight-bold text-danger">錯誤訊息</h6>
+            <pre id="ld-error" class="bg-light p-3 rounded small text-danger" style="white-space:pre-wrap;word-break:break-all"></pre>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">關閉</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
+    // Chart
     new Chart(document.getElementById('userTypePie'), {
       type: 'doughnut',
       data: {
@@ -287,6 +357,121 @@ function dashboardContent(stats: {
       },
       options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
     });
+
+    // --- DataTables filter state ---
+    var activeTypeFilter = 'user';    // 預設：老師＋家長
+    var activeStatusFilter = 'all';
+
+    // Custom row-level filter (runs on every draw)
+    $.fn.dataTable.ext.search.push(function(settings, _data, dataIndex) {
+      if (settings.nTable.id !== 'logsTable') return true;
+      var row = settings.aoData[dataIndex].nTr;
+      if (!row) return true;
+      var ut = row.getAttribute('data-usertype') || '';
+      var st = row.getAttribute('data-status') || '';
+
+      var typeOk = activeTypeFilter === 'all' ? true
+        : activeTypeFilter === 'user' ? (ut === 'teacher' || ut === 'parent')
+        : ut === activeTypeFilter;
+
+      var statusOk = activeStatusFilter === 'all' ? true : st === activeStatusFilter;
+      return typeOk && statusOk;
+    });
+
+    $(document).ready(function() {
+      var table = $('#logsTable').DataTable({
+        order: [[0, 'desc']],
+        pageLength: 15,
+        lengthMenu: [10, 15, 25, 50],
+        language: {
+          search: '搜尋：',
+          lengthMenu: '每頁 _MENU_ 筆',
+          info: '第 _START_–_END_ 筆，共 _TOTAL_ 筆',
+          infoEmpty: '共 0 筆',
+          zeroRecords: '沒有符合的記錄',
+          paginate: { first:'«', last:'»', next:'›', previous:'‹' }
+        },
+        columnDefs: [
+          { orderable: false, targets: [1, 4, 5] },
+          { searchable: false, targets: [1, 5] }
+        ]
+      });
+
+      // 類型篩選
+      $('#typeFilter button').on('click', function() {
+        $('#typeFilter button').each(function() {
+          var v = $(this).data('val');
+          $(this).removeClass('active btn-primary btn-warning btn-secondary')
+            .addClass(v === 'teacher' ? 'btn-outline-primary'
+              : v === 'parent' ? 'btn-outline-warning' : 'btn-outline-secondary');
+        });
+        var val = $(this).data('val');
+        $(this).removeClass('btn-outline-primary btn-outline-warning btn-outline-secondary')
+          .addClass('active')
+          .addClass(val === 'teacher' ? 'btn-primary'
+            : val === 'parent' ? 'btn-warning' : 'btn-secondary');
+        activeTypeFilter = val;
+        table.draw();
+      });
+
+      // 狀態篩選
+      $('#statusFilter button').on('click', function() {
+        $('#statusFilter button').each(function() {
+          var v = $(this).data('val');
+          $(this).removeClass('active btn-secondary btn-success btn-danger')
+            .addClass(v === 'success' ? 'btn-outline-success'
+              : v === 'error' ? 'btn-outline-danger' : 'btn-outline-secondary');
+        });
+        var val = $(this).data('val');
+        $(this).removeClass('btn-outline-success btn-outline-danger btn-outline-secondary')
+          .addClass('active')
+          .addClass(val === 'success' ? 'btn-success'
+            : val === 'error' ? 'btn-danger' : 'btn-secondary');
+        activeStatusFilter = val;
+        table.draw();
+      });
+
+      // 套用預設篩選（老師＋家長）
+      table.draw();
+    });
+
+    function showLogDetail(row) {
+      const log = JSON.parse(row.getAttribute('data-log'));
+
+      document.getElementById('ld-time').textContent = log.timestamp || '-';
+      document.getElementById('ld-userId').textContent = log.userId || '-';
+      document.getElementById('ld-userType').textContent =
+        log.userType === 'teacher' ? '老師' : log.userType === 'parent' ? '家長' : (log.userType || '-');
+      document.getElementById('ld-action').textContent = log.action || '-';
+      document.getElementById('ld-model').textContent = log.model || '-';
+
+      const statusEl = document.getElementById('ld-status');
+      statusEl.innerHTML = log.status === 'success'
+        ? '<span class="badge badge-success">成功</span>'
+        : log.status === 'error'
+          ? '<span class="badge badge-danger">錯誤</span>'
+          : '<span class="badge badge-secondary">' + (log.status || '-') + '</span>';
+
+      // Input
+      let inputText = log.input || '';
+      try { inputText = JSON.stringify(JSON.parse(inputText), null, 2); } catch(e) {}
+      document.getElementById('ld-input').textContent = inputText || '（無）';
+      document.getElementById('ld-input-section').style.display = inputText ? '' : 'none';
+
+      // Output
+      document.getElementById('ld-output').textContent = log.output || '（無）';
+      document.getElementById('ld-output-section').style.display = log.output ? '' : 'none';
+
+      // Error
+      if (log.error) {
+        document.getElementById('ld-error').textContent = log.error + (log.stack ? '\\n\\n' + log.stack : '');
+        document.getElementById('ld-error-section').style.display = '';
+      } else {
+        document.getElementById('ld-error-section').style.display = 'none';
+      }
+
+      $('#logDetailModal').modal('show');
+    }
   </script>`;
 }
 
@@ -433,7 +618,7 @@ export function createAdminRouter(getDb: () => Firestore) {
 
       const [usersSnap, logsSnap, todaySnap] = await Promise.all([
         getDocs(collection(db, 'users')),
-        getDocs(query(collection(db, 'logs'), orderBy('timestamp', 'desc'), limit(10))),
+        getDocs(query(collection(db, 'logs'), orderBy('timestamp', 'desc'), limit(50))),
         getDocs(query(collection(db, 'logs'), orderBy('timestamp', 'desc'), limit(500))),
       ]);
 
