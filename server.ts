@@ -113,8 +113,7 @@ app.use(session({
 // Admin routes — AdminLTE dashboard replaces the React SPA
 app.use("/admin", createAdminRouter(getDb));
 
-// Root → redirect to admin panel
-app.get("/", (req, res) => res.redirect("/admin"));
+// Root serves the React landing page (handled by Vite in dev, static in prod)
 
 // Global request logger
 app.use((req, res, next) => {
@@ -811,11 +810,13 @@ async function startServer() {
       app.use(vite.middlewares);
       console.log(`[${new Date().toISOString()}] Vite middleware attached.`);
     } else {
-      // Production: AdminLTE serves all UI; static assets (JS/CSS) still from dist
+      // Production: serve React SPA from dist/; admin handled by /admin router above
       const distPath = path.join(process.cwd(), "dist");
       app.use(express.static(distPath));
-      // Any unmatched route → redirect to admin panel
-      app.get("*", (req, res) => res.redirect("/admin"));
+      // Any unmatched route → serve index.html (React SPA handles routing)
+      app.get("*", (req, res) => {
+        res.sendFile(path.join(distPath, "index.html"));
+      });
     }
 
     app.listen(PORT, "0.0.0.0", () => {

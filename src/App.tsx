@@ -1,9 +1,5 @@
-import Dashboard from "./components/Dashboard";
+import LandingPage from "./components/LandingPage";
 
 export default function App() {
-  return (
-    <div className="min-h-screen bg-[#F5F5F0]">
-      <Dashboard />
-    </div>
-  );
+  return <LandingPage />;
 }
