@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>親師悄悄話｜說對話，讓親師溝通不再是難題</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700;900&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#1a1714;
+  --ink2:#3d3830;
+  --ink3:#7a7060;
+  --ink4:#b8ae9e;
+  --border:#e8e0d4;
+  --bg:#faf7f2;
+  --paper:#ffffff;
+  --warm:#f5f0e8;
+
+  --line:#06b22d;
+  --line-lt:rgba(6,178,45,0.1);
+  --line-bd:rgba(6,178,45,0.3);
+
+  --rose:#c0503a;
+  --rose-lt:#fdf0ed;
+  --rose-bd:#e8a898;
+  --rose-mid:#e8786a;
+
+  --gold:#a87830;
+  --gold-lt:#fdf6e3;
+  --gold-bd:#ddb84a;
+  --gold-mid:#c9973a;
+
+  --sage:#4a7a5a;
+  --sage-lt:#eef5ee;
+  --sage-bd:#88c4a0;
+
+  --shadow:0 2px 16px rgba(26,23,20,0.07);
+  --shadow-lg:0 8px 48px rgba(26,23,20,0.10);
+  --serif:'Noto Serif TC',serif;
+  --sans:'Noto Sans TC',sans-serif;
+}
+html{scroll-behavior:smooth}
+body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.65;overflow-x:hidden}
+
+/* ── REVEAL ── */
+.rev{opacity:0;transform:translateY(20px);transition:opacity .6s ease,transform .6s ease}
+.rev.on{opacity:1;transform:none}
+.d1{transition-delay:.1s}.d2{transition-delay:.2s}.d3{transition-delay:.3s}.d4{transition-delay:.4s}
+
+/* ── NAV ── */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  background:rgba(250,247,242,.94);backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);
+  height:60px;padding:0 24px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.nav-brand{display:flex;align-items:center;gap:10px}
+.nav-logo{font-family:var(--serif);font-size:1.05rem;font-weight:700;color:var(--ink)}
+.nav-tagline{font-size:.7rem;color:var(--ink4);letter-spacing:.06em}
+.nav-cta{
+  background:var(--line);color:#fff;
+  padding:8px 20px;border-radius:24px;
+  font-size:.82rem;font-weight:700;text-decoration:none;
+  display:flex;align-items:center;gap:6px;
+  transition:all .2s;
+}
+.nav-cta:hover{background:#059a26;transform:translateY(-1px)}
+
+/* ── HERO ── */
+.hero{
+  min-height:100vh;display:flex;flex-direction:column;justify-content:center;
+  padding:100px 24px 72px;
+  background:
+    radial-gradient(ellipse 60% 60% at 85% 20%,rgba(192,80,58,.06) 0%,transparent 55%),
+    radial-gradient(ellipse 50% 50% at 10% 80%,rgba(74,122,90,.05) 0%,transparent 55%),
+    var(--bg);
+  position:relative;overflow:hidden;
+}
+/* decorative wave */
+.hero::after{
+  content:'';position:absolute;bottom:-2px;left:0;right:0;height:80px;
+  background:var(--paper);
+  clip-path:ellipse(55% 100% at 50% 100%);
+}
+
+.hero-inner{max-width:1000px;margin:0 auto;width:100%;position:relative;z-index:1}
+.hero-layout{display:grid;grid-template-columns:1fr 1fr;gap:3.5rem;align-items:center}
+@media(max-width:720px){.hero-layout{grid-template-columns:1fr;gap:2.5rem}}
+
+.hero-eyebrow{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--rose-lt);border:1px solid var(--rose-bd);
+  padding:5px 14px;border-radius:30px;
+  font-size:.7rem;color:var(--rose);font-weight:700;letter-spacing:.12em;
+  text-transform:uppercase;margin-bottom:20px;
+}
+.eyebrow-dot{width:5px;height:5px;background:var(--rose);border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.4)}}
+
+.hero-h{
+  font-family:var(--serif);
+  font-size:clamp(2rem,5.5vw,3.4rem);
+  font-weight:900;line-height:1.12;
+  letter-spacing:-.02em;color:var(--ink);
+  margin-bottom:18px;
+}
+.hero-h .acc{color:var(--rose)}
+.hero-h .acc2{color:var(--sage)}
+
+.hero-sub{
+  font-size:1rem;color:var(--ink2);
+  line-height:1.8;font-weight:300;margin-bottom:28px;
+}
+.hero-sub strong{color:var(--ink);font-weight:600}
+
+/* LINE CTA group */
+.line-cta-group{display:flex;flex-direction:column;gap:12px}
+.btn-line{
+  display:inline-flex;align-items:center;gap:10px;
+  background:var(--line);color:#fff;
+  padding:14px 28px;border-radius:14px;
+  font-family:var(--serif);font-size:1rem;font-weight:700;
+  text-decoration:none;letter-spacing:.04em;
+  transition:all .25s;width:fit-content;
+  box-shadow:0 4px 20px rgba(6,178,45,.28);
+}
+.btn-line:hover{background:#059a26;transform:translateY(-2px);box-shadow:0 8px 28px rgba(6,178,45,.38)}
+.btn-line-icon{width:22px;height:22px;background:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center}
+.btn-line-icon svg{width:14px;height:14px}
+.free-note{
+  display:flex;align-items:center;gap:7px;
+  font-size:.75rem;color:var(--ink3);
+}
+.free-note::before{content:'✓';color:var(--sage);font-weight:700;font-size:.9rem}
+
+.btn-secondary-sm{
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--paper);border:1.5px solid var(--border);
+  padding:10px 20px;border-radius:10px;
+  font-size:.88rem;color:var(--ink2);text-decoration:none;
+  transition:all .2s;width:fit-content;
+}
+.btn-secondary-sm:hover{border-color:var(--rose-bd);color:var(--rose)}
+
+/* hero versions badge */
+.version-tabs{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+.vtab{
+  padding:5px 14px;border-radius:20px;border:1.5px solid var(--border);
+  font-size:.75rem;font-weight:600;cursor:default;
+  display:flex;align-items:center;gap:5px;
+}
+.vtab.teacher{background:var(--gold-lt);border-color:var(--gold-bd);color:var(--gold)}
+.vtab.parent{background:var(--rose-lt);border-color:var(--rose-bd);color:var(--rose)}
+
+/* ── LINE CHAT MOCKUP ── */
+.chat-mockup{
+  background:#dfe7ef;border-radius:20px;
+  overflow:hidden;box-shadow:var(--shadow-lg);
+  border:1px solid rgba(0,0,0,.05);
+}
+.chat-hdr{
+  background:#06b;padding:12px 16px;
+  display:flex;align-items:center;gap:10px;
+}
+.chat-avatar{
+  width:36px;height:36px;border-radius:50%;
+  background:linear-gradient(135deg,var(--gold-mid),var(--rose));
+  display:flex;align-items:center;justify-content:center;
+  font-size:1rem;
+}
+.chat-name{font-size:13px;font-weight:700;color:#fff}
+.chat-status{font-size:10px;color:rgba(255,255,255,.6)}
+.chat-body{padding:14px 12px;display:flex;flex-direction:column;gap:9px}
+.chat-ts{font-size:9px;color:rgba(0,0,0,.3);text-align:center}
+.bbl{border-radius:16px;padding:9px 13px;font-size:12px;line-height:1.55;max-width:230px}
+.bbl.bot{background:#fff;color:var(--ink);border-radius:16px 16px 16px 3px;align-self:flex-start}
+.bbl.usr{background:#c8e6a0;color:var(--ink);border-radius:16px 16px 3px 16px;align-self:flex-end}
+.bbl.res{
+  background:#fff;color:var(--ink);border-radius:16px 16px 16px 3px;
+  border-left:3px solid var(--gold-mid);align-self:flex-start;
+  font-size:11px;max-width:250px;
+}
+.bbl .lbl{font-size:9px;font-weight:700;color:var(--gold);margin-bottom:3px}
+.qr{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
+.qb{
+  background:#fff;border:1px solid #06b;color:#06b;
+  font-size:10px;font-weight:600;padding:3px 9px;border-radius:10px;
+}
+
+/* ── SECTION ── */
+section{padding:72px 24px}
+.wrap{max-width:1000px;margin:0 auto}
+.sec-tag{
+  display:flex;align-items:center;gap:8px;
+  font-size:.68rem;letter-spacing:.18em;color:var(--rose);
+  text-transform:uppercase;font-weight:700;margin-bottom:8px;
+}
+.sec-tag::before{content:'';width:18px;height:2px;background:var(--rose);border-radius:1px}
+.sec-h{
+  font-family:var(--serif);
+  font-size:clamp(1.5rem,3.5vw,2.2rem);
+  font-weight:700;color:var(--ink);margin-bottom:12px;line-height:1.25;
+}
+.sec-h .acc{color:var(--rose)}
+.sec-h .acc2{color:var(--sage)}
+.sec-h .acc3{color:var(--gold)}
+.sec-lead{font-size:.95rem;color:var(--ink2);line-height:1.8;font-weight:300;max-width:520px}
+
+.divider{height:1px;background:linear-gradient(90deg,transparent,var(--border),transparent)}
+
+/* ── WHO IS THIS FOR ── */
+.who-section{background:var(--paper)}
+.who-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:2.5rem}
+@media(max-width:620px){.who-grid{grid-template-columns:1fr}}
+
+.who-card{
+  border-radius:18px;padding:2rem 1.75rem;
+  border:2px solid transparent;transition:all .25s;
+}
+.who-card.teacher{background:var(--gold-lt);border-color:rgba(168,120,48,.2)}
+.who-card.parent{background:var(--rose-lt);border-color:rgba(192,80,58,.2)}
+.who-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg)}
+
+.who-icon{font-size:2.2rem;margin-bottom:12px}
+.who-title{
+  font-family:var(--serif);font-size:1.2rem;font-weight:700;
+  margin-bottom:6px;
+}
+.who-card.teacher .who-title{color:var(--gold)}
+.who-card.parent .who-title{color:var(--rose)}
+.who-desc{font-size:.85rem;color:var(--ink2);line-height:1.7;margin-bottom:14px}
+.who-list{list-style:none;display:flex;flex-direction:column;gap:6px}
+.who-list li{
+  display:flex;align-items:flex-start;gap:8px;
+  font-size:.82rem;color:var(--ink2);line-height:1.5;
+}
+.who-list li::before{content:'✓';font-weight:700;flex-shrink:0}
+.who-card.teacher .who-list li::before{color:var(--gold)}
+.who-card.parent .who-list li::before{color:var(--rose)}
+
+/* ── PAIN POINTS ── */
+.pain-section{background:var(--bg)}
+.pain-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;margin-top:2.5rem}
+@media(max-width:720px){.pain-grid{grid-template-columns:1fr}}
+
+.pain-card{
+  background:var(--paper);border:1.5px solid var(--border);
+  border-radius:16px;padding:1.5rem;
+  position:relative;overflow:hidden;transition:all .25s;
+}
+.pain-card:hover{border-color:var(--rose-bd);transform:translateY(-3px);box-shadow:var(--shadow-lg)}
+.pain-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--rose),transparent);border-radius:16px 16px 0 0}
+.pain-num{font-family:var(--serif);font-size:2.5rem;font-weight:900;color:rgba(192,80,58,.12);line-height:1;margin-bottom:8px}
+.pain-title{font-family:var(--serif);font-size:.98rem;font-weight:700;color:var(--ink);margin-bottom:6px}
+.pain-desc{font-size:.8rem;color:var(--ink3);line-height:1.7}
+.pain-quote{
+  margin-top:10px;padding:8px 11px;
+  background:var(--warm);border-radius:8px;
+  font-size:.73rem;color:var(--ink3);line-height:1.6;font-style:italic;
+  border-left:2px solid var(--rose-bd);
+}
+
+/* ── HOW IT WORKS ── */
+.how-section{background:var(--paper)}
+.how-steps{display:flex;flex-direction:column;gap:0}
+.how-step{
+  display:grid;grid-template-columns:52px 1fr;
+  gap:0 16px;padding-bottom:28px;position:relative;
+}
+.how-step:not(:last-child)::after{
+  content:'';position:absolute;left:25px;top:52px;bottom:0;
+  width:2px;background:linear-gradient(to bottom,var(--rose-bd),rgba(192,80,58,.05));
+}
+.how-step-num{
+  width:52px;height:52px;border-radius:50%;
+  background:var(--paper);border:2px solid var(--rose-bd);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--serif);font-size:1.1rem;font-weight:900;
+  color:var(--rose);flex-shrink:0;position:relative;z-index:1;
+}
+.how-step-body{padding-top:12px}
+.how-step-title{font-weight:700;font-size:.92rem;color:var(--ink);margin-bottom:5px}
+.how-step-desc{font-size:.8rem;color:var(--ink2);line-height:1.65}
+
+.how-layout{display:grid;grid-template-columns:1fr 1fr;gap:4rem;align-items:start;margin-top:3rem}
+@media(max-width:720px){.how-layout{grid-template-columns:1fr;gap:2.5rem}}
+
+/* sticky demo */
+.how-demo{position:sticky;top:80px}
+
+/* ── FEATURES ── */
+.features-section{background:var(--warm)}
+.features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;margin-top:2.5rem}
+@media(max-width:720px){.features-grid{grid-template-columns:1fr}}
+
+.feat-card{
+  background:var(--paper);border:1px solid var(--border);
+  border-radius:16px;padding:1.5rem;
+  transition:all .25s;
+}
+.feat-card:hover{box-shadow:var(--shadow-lg);transform:translateY(-3px)}
+.feat-icon{
+  width:48px;height:48px;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.5rem;margin-bottom:14px;
+}
+.feat-icon.rose{background:var(--rose-lt)}
+.feat-icon.gold{background:var(--gold-lt)}
+.feat-icon.sage{background:var(--sage-lt)}
+.feat-title{font-family:var(--serif);font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:6px}
+.feat-desc{font-size:.8rem;color:var(--ink3);line-height:1.7}
+
+/* ── TESTIMONIALS ── */
+.testi-section{background:var(--paper)}
+.testi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;margin-top:2.5rem}
+@media(max-width:720px){.testi-grid{grid-template-columns:1fr}}
+
+.tcard{
+  background:var(--bg);border:1px solid var(--border);
+  border-radius:16px;padding:1.5rem;
+  transition:all .25s;
+}
+.tcard:hover{box-shadow:var(--shadow-lg);transform:translateY(-3px)}
+.tcard-q{font-family:var(--serif);font-size:2.5rem;color:rgba(192,80,58,.15);line-height:1;margin-bottom:6px}
+.tcard-text{font-size:.88rem;color:var(--ink2);line-height:1.75;margin-bottom:1.25rem;font-style:italic}
+.tcard-text strong{color:var(--rose);font-style:normal;font-weight:700}
+.tcard-author{display:flex;align-items:center;gap:10px}
+.tcard-avatar{
+  width:36px;height:36px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:.95rem;
+}
+.tcard-name{font-size:.8rem;font-weight:700;color:var(--ink)}
+.tcard-role{font-size:.7rem;color:var(--ink4);margin-top:1px}
+
+/* ── PRICING ── */
+.pricing-section{background:var(--bg)}
+.pricing-tabs{display:flex;gap:0;margin-bottom:2.5rem;border-radius:12px;overflow:hidden;border:1.5px solid var(--border);width:fit-content}
+.ptab{
+  padding:10px 24px;font-size:.85rem;font-weight:600;cursor:pointer;
+  background:var(--paper);color:var(--ink3);border:none;
+  transition:all .2s;font-family:var(--sans);
+}
+.ptab.active.teacher{background:var(--gold-lt);color:var(--gold)}
+.ptab.active.parent{background:var(--rose-lt);color:var(--rose)}
+
+.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem}
+@media(max-width:640px){.pricing-grid{grid-template-columns:1fr}}
+
+.pcard{
+  background:var(--paper);border:1.5px solid var(--border);
+  border-radius:18px;padding:1.75rem 1.5rem;
+  display:flex;flex-direction:column;
+  transition:all .25s;position:relative;
+}
+.pcard:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg)}
+.pcard.pop{border-color:var(--rose-bd)}
+.pcard.pop::before{
+  content:'最多人選';
+  position:absolute;top:-11px;left:50%;transform:translateX(-50%);
+  background:var(--rose);color:#fff;
+  font-size:.62rem;font-weight:800;padding:3px 14px;border-radius:12px;letter-spacing:.06em;
+}
+.pcard.pop2{border-color:var(--gold-bd)}
+.pcard.pop2::before{
+  content:'最受歡迎';
+  position:absolute;top:-11px;left:50%;transform:translateX(-50%);
+  background:var(--gold);color:#fff;
+  font-size:.62rem;font-weight:800;padding:3px 14px;border-radius:12px;letter-spacing:.06em;
+}
+.pcard-tag{font-size:.65rem;letter-spacing:.15em;text-transform:uppercase;font-weight:700;margin-bottom:14px}
+.pcard-tag.t{color:var(--gold)}.pcard-tag.p{color:var(--rose)}
+.pcard-price{font-family:var(--serif);font-size:2.8rem;font-weight:900;color:var(--ink);line-height:1;margin-bottom:4px}
+.pcard-price .cur{font-size:1rem;font-weight:400;color:var(--ink3)}
+.pcard-period{font-size:.75rem;color:var(--ink4);margin-bottom:18px}
+.pcard-feats{list-style:none;display:flex;flex-direction:column;gap:9px;flex:1;margin-bottom:1.5rem}
+.pcard-feats li{display:flex;align-items:flex-start;gap:7px;font-size:.8rem;color:var(--ink2);line-height:1.5}
+.pcard-feats li::before{content:'✓';font-weight:700;flex-shrink:0;margin-top:1px}
+.pcard.teacher-card .pcard-feats li::before{color:var(--gold)}
+.pcard.parent-card .pcard-feats li::before{color:var(--rose)}
+.pcard-feats li.dim{color:var(--ink4)}.pcard-feats li.dim::before{content:'–';color:var(--ink4)}
+.pcard-btn{
+  display:block;text-align:center;padding:11px;border-radius:12px;
+  font-weight:700;font-size:.88rem;text-decoration:none;
+  transition:all .2s;font-family:var(--serif);letter-spacing:.04em;
+}
+.pcard-btn.line-btn{background:var(--line);color:#fff;box-shadow:0 4px 14px rgba(6,178,45,.25)}
+.pcard-btn.line-btn:hover{background:#059a26;transform:translateY(-1px)}
+.pcard-btn.outline{background:var(--paper);color:var(--ink2);border:1.5px solid var(--border)}
+.pcard-btn.outline:hover{border-color:var(--rose-bd);color:var(--rose)}
+.pcard-btn.gold-outline{background:var(--paper);color:var(--gold);border:1.5px solid var(--gold-bd)}
+.pcard-btn.gold-outline:hover{background:var(--gold-lt)}
+
+/* hidden content for tabs */
+.pricing-teacher,.pricing-parent{display:none}
+.pricing-teacher.show,.pricing-parent.show{display:block}
+
+/* ── CTA FINAL ── */
+.cta-section{
+  background:var(--paper);padding:80px 24px;text-align:center;
+}
+.cta-box{
+  max-width:600px;margin:0 auto;
+  background:linear-gradient(135deg,var(--rose-lt) 0%,var(--sage-lt) 100%);
+  border:2px solid var(--rose-bd);border-radius:24px;
+  padding:48px 36px;position:relative;overflow:hidden;
+}
+.cta-box::before{
+  content:'悄悄話';
+  position:absolute;top:16px;right:20px;
+  font-family:var(--serif);font-size:4rem;font-weight:900;
+  color:rgba(192,80,58,.06);line-height:1;
+}
+.cta-h{
+  font-family:var(--serif);
+  font-size:clamp(1.4rem,4vw,2rem);font-weight:900;
+  color:var(--ink);line-height:1.35;margin-bottom:12px;
+}
+.cta-h .acc{color:var(--rose)}
+.cta-sub{font-size:.9rem;color:var(--ink2);margin-bottom:28px;line-height:1.7}
+.cta-line-btn{
+  display:inline-flex;align-items:center;gap:10px;
+  background:var(--line);color:#fff;
+  padding:16px 36px;border-radius:14px;
+  font-family:var(--serif);font-size:1.05rem;font-weight:700;
+  text-decoration:none;letter-spacing:.05em;
+  box-shadow:0 6px 24px rgba(6,178,45,.3);
+  transition:all .3s;
+}
+.cta-line-btn:hover{background:#059a26;transform:translateY(-3px);box-shadow:0 12px 36px rgba(6,178,45,.4)}
+.cta-note{margin-top:14px;font-size:.73rem;color:var(--ink4)}
+
+/* ── FOOTER ── */
+footer{
+  background:var(--ink);color:rgba(255,255,255,.4);
+  padding:2.5rem 24px;text-align:center;
+}
+.footer-logo{font-family:var(--serif);font-size:1rem;font-weight:700;color:rgba(255,255,255,.75);margin-bottom:6px}
+.footer-text{font-size:.72rem;line-height:1.8}
+.footer-text a{color:rgba(255,255,255,.35);text-decoration:none}
+.footer-text a:hover{color:rgba(255,255,255,.6)}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-brand">
+    <div class="nav-logo">親師悄悄話</div>
+    <div class="nav-tagline">說對話，親師溝通不再是難題</div>
+  </div>
+  <a href="#line-start" class="nav-cta">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1C4.134 1 1 3.698 1 7.03c0 2.072 1.243 3.898 3.13 5.008L3.5 15l3.21-1.69A7.8 7.8 0 008 13.06C11.866 13.06 15 10.362 15 7.03 15 3.698 11.866 1 8 1z" fill="white"/></svg>
+    免費加入 LINE
+  </a>
+</nav>
+
+
+<!-- ════════ HERO ════════ -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-layout">
+      <div>
+        <div class="version-tabs rev">
+          <div class="vtab teacher">👩‍🏫 老師版</div>
+          <div class="vtab parent">👨‍👩‍👧 家長版</div>
+        </div>
+
+        <div class="hero-eyebrow rev d1">
+          <div class="eyebrow-dot"></div>
+          在 LINE 裡直接使用
+        </div>
+
+        <h1 class="hero-h rev d1">
+          親師溝通，<br>
+          說對話比<span class="acc">說很多話</span><br>
+          更重要。
+        </h1>
+
+        <p class="hero-sub rev d2">
+          老師不知道怎麼寫通知、回覆情緒化的家長訊息；<br>
+          家長不知道怎麼回老師、孩子出事時腦袋空白。<br>
+          <strong>親師悄悄話，幫你找到最好的措辭。</strong>
+        </p>
+
+        <div class="line-cta-group rev d3">
+          <a href="https://line.me/R/ti/p/@qinsishiaoqiaohua" class="btn-line" id="line-start">
+            <div class="btn-line-icon">
+              <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M8 1C4.134 1 1 3.698 1 7.03c0 2.072 1.243 3.898 3.13 5.008L3.5 15l3.21-1.69A7.8 7.8 0 008 13.06C11.866 13.06 15 10.362 15 7.03 15 3.698 11.866 1 8 1z" fill="#06b22d"/>
+              </svg>
+            </div>
+            在 LINE 免費開始
+          </a>
+          <div class="free-note">每天 3 次完全免費，不需要下載 App，加好友就能用</div>
+          <a href="#pricing" class="btn-secondary-sm">查看方案 ↓</a>
+        </div>
+      </div>
+
+      <!-- Hero chat mockup -->
+      <div class="chat-mockup rev d2">
+        <div class="chat-hdr">
+          <div class="chat-avatar">💬</div>
+          <div>
+            <div class="chat-name">親師悄悄話</div>
+            <div class="chat-status">在線中</div>
+          </div>
+        </div>
+        <div class="chat-body">
+          <div class="chat-ts">今天 下午 4:12</div>
+          <div class="bbl bot">
+            👋 你好！我是親師悄悄話。<br>
+            今天需要什麼幫助？
+            <div class="qr">
+              <span class="qb">👩‍🏫 我是老師</span>
+              <span class="qb">👨‍👩‍👧 我是家長</span>
+            </div>
+          </div>
+          <div class="bbl usr">👩‍🏫 我是老師</div>
+          <div class="bbl bot">
+            老師好！需要什麼幫忙？
+            <div class="qr">
+              <span class="qb">📢 寫家長通知</span>
+              <span class="qb">💬 回覆家長</span>
+              <span class="qb">🤝 衝突處理</span>
+            </div>
+          </div>
+          <div class="bbl usr">📢 寫家長通知</div>
+          <div class="bbl bot">好！通知的類型是？<div class="qr"><span class="qb">🎉 活動通知</span><span class="qb">💰 繳費通知</span><span class="qb">🏥 健康衛生</span></div></div>
+          <div class="bbl usr">🎉 活動通知</div>
+          <div class="bbl bot">請輸入通知重點：<br>（幾個關鍵詞就好，例如：下週三故宮、帶便當、穿運動服、收費120元）</div>
+          <div class="bbl usr" style="max-width:200px">下週三故宮校外教學、帶便當、穿運動服、120元</div>
+          <div class="bbl res">
+            <div class="lbl">✦ AI 生成結果</div>
+            各位親愛的家長朋友您好，本班將於下週三前往國立故宮博物院進行校外教學。當天請為孩子準備便當及飲用水，並穿著運動服出席，活動費用 NT$120 元請於本週一前繳交。感謝您的支持，祝親子平安！
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════ WHO IS THIS FOR ════════ -->
+<section class="who-section">
+  <div class="wrap">
+    <div class="sec-tag rev">這是為你設計的</div>
+    <h2 class="sec-h rev d1">老師、家長，<br><span class="acc">都找得到自己的位置</span></h2>
+    <p class="sec-lead rev d2">兩個版本各自獨立，各自付費，各自解決自己的溝通難題。</p>
+
+    <div class="who-grid">
+      <div class="who-card teacher rev d1">
+        <div class="who-icon">👩‍🏫</div>
+        <div class="who-title">老師版</div>
+        <p class="who-desc">每天面對 LINE 群組的班導師，寫通知、回訊息、處理衝突——親師悄悄話讓這一切變得輕鬆。</p>
+        <ul class="who-list">
+          <li>校外教學、繳費、健康通知一鍵生成</li>
+          <li>家長情緒訊息不知怎麼回？AI 給你措辭</li>
+          <li>群組風波、家長投訴，有話術可以用</li>
+          <li>記住你的溝通風格，每次生成都是你的語氣</li>
+        </ul>
+      </div>
+      <div class="who-card parent rev d2">
+        <div class="who-icon">👨‍👩‍👧</div>
+        <div class="who-title">家長版</div>
+        <p class="who-desc">不知道怎麼回老師、孩子在學校出事腦袋空白——親師悄悄話幫你說對話，保護孩子也維持親師關係。</p>
+        <ul class="who-list">
+          <li>老師傳訊息，不知怎麼回？AI 幫你分析語氣</li>
+          <li>孩子發生衝突，幫你想好怎麼跟老師說</li>
+          <li>親師關係變冷，幫你找自然修復的方式</li>
+          <li>請假、早退、特殊說明，措辭得體不失禮</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+
+<!-- ════════ PAIN POINTS ════════ -->
+<section class="pain-section">
+  <div class="wrap">
+    <div class="sec-tag rev">你是不是也這樣</div>
+    <h2 class="sec-h rev d1">那種說不出口的<span class="acc">為難</span>，<br>每個人都懂</h2>
+    <p class="sec-lead rev d2">不是不想溝通，是真的不知道怎麼說才對。</p>
+
+    <div class="pain-grid">
+      <div class="pain-card rev d1">
+        <div class="pain-num">01</div>
+        <div class="pain-title">寫了刪、刪了寫</div>
+        <p class="pain-desc">一則通知反覆改了二十分鐘，太正式怕家長覺得冷漠，太輕鬆又怕不夠重視。</p>
+        <div class="pain-quote">「這樣寫會不會讓家長覺得我在命令他們⋯⋯」</div>
+      </div>
+      <div class="pain-card rev d2">
+        <div class="pain-num">02</div>
+        <div class="pain-title">家長情緒訊息，腦袋空白</div>
+        <p class="pain-desc">「老師，我覺得你對我家孩子的評分不公平⋯⋯」怎麼回才不會讓事情更糟？</p>
+        <div class="pain-quote">「已讀不回感覺不對，但我又真的不知道說什麼⋯⋯」</div>
+      </div>
+      <div class="pain-card rev d3">
+        <div class="pain-num">03</div>
+        <div class="pain-title">孩子出事，說錯更麻煩</div>
+        <p class="pain-desc">孩子在學校跟同學衝突，身為家長又急又氣，但說話太衝可能傷了親師關係。</p>
+        <div class="pain-quote">「我要怎麼問才能保護孩子，又不得罪老師？」</div>
+      </div>
+      <div class="pain-card rev d1">
+        <div class="pain-num">04</div>
+        <div class="pain-title">群組公開衝突無處躲</div>
+        <p class="pain-desc">一個家長質疑，其他家長跟著問，老師在公開群組成為眾矢之的，不知如何應對。</p>
+        <div class="pain-quote">「我說的每個字都可能被截圖⋯⋯」</div>
+      </div>
+      <div class="pain-card rev d2">
+        <div class="pain-num">05</div>
+        <div class="pain-title">想問老師又怕打擾</div>
+        <p class="pain-desc">想了解孩子的學習狀況，又不確定這時間點適不適合問、問了老師會不會覺得麻煩。</p>
+        <div class="pain-quote">「這個問題感覺很蠢，老師會不會覺得我很煩⋯⋯」</div>
+      </div>
+      <div class="pain-card rev d3">
+        <div class="pain-num">06</div>
+        <div class="pain-title">晚上十點還在回 LINE</div>
+        <p class="pain-desc">家長傳來訊息，放著不好，回了不知道說什麼，老師的休息時間就這樣一點一點消失。</p>
+        <div class="pain-quote">「下班之後我不應該再是老師了，但我不得不回⋯⋯」</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+
+<!-- ════════ HOW IT WORKS ════════ -->
+<section class="how-section">
+  <div class="wrap">
+    <div class="sec-tag rev">怎麼使用</div>
+    <h2 class="sec-h rev d1">在 LINE 裡，<br><span class="acc2">三步驟拿到最好的措辭</span></h2>
+    <p class="sec-lead rev d2">不需要下載 App，不需要登入網站，就在你每天都在用的 LINE。</p>
+
+    <div class="how-layout">
+      <div class="how-steps rev">
+        <div class="how-step">
+          <div class="how-step-num">1</div>
+          <div class="how-step-body">
+            <div class="how-step-title">掃 QR Code 加好友</div>
+            <div class="how-step-desc">就像加普通 LINE 聯絡人一樣，5 秒完成，不需要安裝任何東西。</div>
+          </div>
+        </div>
+        <div class="how-step">
+          <div class="how-step-num">2</div>
+          <div class="how-step-body">
+            <div class="how-step-title">選擇你的身份與需求</div>
+            <div class="how-step-desc">告訴 AI 你是老師還是家長，遇到什麼情況，AI 會問你幾個快速問題。</div>
+          </div>
+        </div>
+        <div class="how-step">
+          <div class="how-step-num">3</div>
+          <div class="how-step-body">
+            <div class="how-step-title">10 秒拿到建議措辭</div>
+            <div class="how-step-desc">AI 生成完整的回覆或通知內容，複製貼上就好，不滿意可以重新生成或請 AI 調整語氣。</div>
+          </div>
+        </div>
+        <div class="how-step">
+          <div class="how-step-num">4</div>
+          <div class="how-step-body">
+            <div class="how-step-title">越用越懂你</div>
+            <div class="how-step-desc">設定你的溝通風格和習慣，之後每次生成都自動帶入你的語氣，不需要重複說明。</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Demo -->
+      <div class="how-demo rev d2">
+        <div class="chat-mockup">
+          <div class="chat-hdr">
+            <div class="chat-avatar">💬</div>
+            <div>
+              <div class="chat-name">親師悄悄話</div>
+              <div class="chat-status">在線中</div>
+            </div>
+          </div>
+          <div class="chat-body">
+            <div class="bbl bot">發生了什麼情況？<div class="qr"><span class="qb">💬 回覆老師訊息</span><span class="qb">🚨 孩子出事了</span><span class="qb">🤝 修復關係</span></div></div>
+            <div class="bbl usr">🚨 孩子出事了</div>
+            <div class="bbl bot">請描述發生了什麼：<br>（越詳細，AI 給的建議越準確）</div>
+            <div class="bbl usr" style="max-width:210px">老師說我孩子在班上跟同學發生肢體衝突，叫我去學校，但孩子說他是被打的</div>
+            <div class="bbl bot">了解。你希望達到什麼？<div class="qr"><span class="qb">先了解完整狀況</span><span class="qb">保護孩子立場</span></div></div>
+            <div class="bbl usr">先了解完整狀況</div>
+            <div class="bbl res">
+              <div class="lbl">✦ 建議回覆老師</div>
+              謝謝老師通知，我們會盡快過去。在來之前想先請問老師，這次衝突的完整經過是什麼？因為孩子回家說是另一方先動手，希望去學校時能聽到比較完整的說明，謝謝老師費心處理。
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+
+<!-- ════════ FEATURES ════════ -->
+<section class="features-section">
+  <div class="wrap">
+    <div class="sec-tag rev">為什麼不直接問 ChatGPT</div>
+    <h2 class="sec-h rev d1">一樣是 AI，<br><span class="acc3">但親師悄悄話懂台灣</span></h2>
+    <p class="sec-lead rev d2">ChatGPT 不知道台灣腸病毒停課怎麼寫、不懂恐龍家長的應對眉角、也不記得你是哪種風格的老師。</p>
+
+    <div class="features-grid">
+      <div class="feat-card rev d1">
+        <div class="feat-icon rose">🇹🇼</div>
+        <div class="feat-title">台灣教育文化調校</div>
+        <p class="feat-desc">深度理解台灣親師溝通文化、學校行政用語、衛生署健康通知規範，不用你每次都從頭解釋背景。</p>
+      </div>
+      <div class="feat-card rev d2">
+        <div class="feat-icon gold">🧠</div>
+        <div class="feat-title">記住你的溝通風格</div>
+        <p class="feat-desc">設定一次慣用開場白、避免使用的詞、溝通語氣，之後每次生成都自動帶入，生成的內容就是你說話的方式。</p>
+      </div>
+      <div class="feat-card rev d3">
+        <div class="feat-icon sage">💬</div>
+        <div class="feat-title">在 LINE 裡直接用</div>
+        <p class="feat-desc">不需要開瀏覽器、不需要記帳號密碼，加好友就能用，跟平常用 LINE 聊天一模一樣，零學習成本。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+
+<!-- ════════ TESTIMONIALS ════════ -->
+<section class="testi-section">
+  <div class="wrap">
+    <div class="sec-tag rev">他們說</div>
+    <h2 class="sec-h rev d1">用過之後，<br><span class="acc">都說鬆了一口氣</span></h2>
+
+    <div class="testi-grid">
+      <div class="tcard rev d1">
+        <div class="tcard-q">"</div>
+        <p class="tcard-text">以前寫一則校外教學通知要花 <strong>20 分鐘</strong>，現在說幾個關鍵字三秒就好。那 20 分鐘我拿去陪自己的小孩了。</p>
+        <div class="tcard-author">
+          <div class="tcard-avatar" style="background:var(--gold-lt)">🌸</div>
+          <div>
+            <div class="tcard-name">陳老師</div>
+            <div class="tcard-role">台中市國小・二年級導師</div>
+          </div>
+        </div>
+      </div>
+      <div class="tcard rev d2">
+        <div class="tcard-q">"</div>
+        <p class="tcard-text">孩子說被同學故意推倒，我又急又氣。AI <strong>幫我分析了情況</strong>，建議我先請老師調查而不是直接指控——事後老師認真查了，結果對我們有利。</p>
+        <div class="tcard-author">
+          <div class="tcard-avatar" style="background:var(--rose-lt)">🌷</div>
+          <div>
+            <div class="tcard-name">劉媽媽</div>
+            <div class="tcard-role">國小二年級・台北</div>
+          </div>
+        </div>
+      </div>
+      <div class="tcard rev d3">
+        <div class="tcard-q">"</div>
+        <p class="tcard-text">最厲害的是它<strong>記住我不喜歡說「麻煩家長」</strong>，設定一次之後每次生成都自動換掉了。ChatGPT 根本做不到這個。</p>
+        <div class="tcard-author">
+          <div class="tcard-avatar" style="background:var(--sage-lt)">⭐</div>
+          <div>
+            <div class="tcard-name">王老師</div>
+            <div class="tcard-role">台北市國小・三年級導師</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+
+<!-- ════════ PRICING ════════ -->
+<section class="pricing-section" id="pricing">
+  <div class="wrap">
+    <div class="sec-tag rev">使用方案</div>
+    <h2 class="sec-h rev d1">選擇你的方案，<br><span class="acc3">免費就能開始</span></h2>
+    <p class="sec-lead rev d2">老師版和家長版各自獨立，按照自己的需求選擇，沒有綁定。</p>
+
+    <!-- Tabs -->
+    <div class="pricing-tabs rev">
+      <button class="ptab teacher active" onclick="switchPricing('teacher')">👩‍🏫 老師版</button>
+      <button class="ptab parent" onclick="switchPricing('parent')">👨‍👩‍👧 家長版</button>
+    </div>
+
+    <!-- Teacher Pricing -->
+    <div class="pricing-teacher show rev">
+      <div class="pricing-grid">
+        <div class="pcard teacher-card rev d1">
+          <div class="pcard-tag t">免費版</div>
+          <div class="pcard-price"><span class="cur">NT$</span>0</div>
+          <div class="pcard-period">永久免費，無需信用卡</div>
+          <ul class="pcard-feats">
+            <li>每天 3 次 AI 生成</li>
+            <li>家長通知生成</li>
+            <li>在 LINE 直接使用</li>
+            <li class="dim">家長回覆生成</li>
+            <li class="dim">衝突處理策略</li>
+            <li class="dim">老師風格記憶</li>
+          </ul>
+          <a href="https://line.me/R/ti/p/@qinsishiaoqiaohua" class="pcard-btn line-btn">免費加入 LINE</a>
+        </div>
+
+        <div class="pcard teacher-card pop2 rev d2">
+          <div class="pcard-tag t">月費版</div>
+          <div class="pcard-price"><span class="cur">NT$</span>199</div>
+          <div class="pcard-period">/月，隨時取消</div>
+          <ul class="pcard-feats">
+            <li>無限次 AI 生成</li>
+            <li>家長通知生成</li>
+            <li>家長回覆生成</li>
+            <li>衝突處理策略</li>
+            <li>老師風格記憶</li>
+            <li>歷史紀錄查詢</li>
+          </ul>
+          <a href="https://line.me/R/ti/p/@qinsishiaoqiaohua" class="pcard-btn gold-outline">升級月費版</a>
+        </div>
+
+        <div class="pcard teacher-card rev d3">
+          <div class="pcard-tag t">學期版</div>
+          <div class="pcard-price"><span class="cur">NT$</span>799</div>
+          <div class="pcard-period">/學期（約5個月），等同 NT$160/月</div>
+          <ul class="pcard-feats">
+            <li>月費版所有功能</li>
+            <li>學期內不中斷</li>
+            <li>比月費版省 NT$196</li>
+            <li>最划算的選擇</li>
+          </ul>
+          <a href="https://line.me/R/ti/p/@qinsishiaoqiaohua" class="pcard-btn outline">選擇學期版</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Parent Pricing -->
+    <div class="pricing-parent rev">
+      <div class="pricing-grid">
+        <div class="pcard parent-card rev d1">
+          <div class="pcard-tag p">免費版</div>
+          <div class="pcard-price"><span class="cur">NT$</span>0</div>
+          <div class="pcard-period">永久免費，無需信用卡</div>
+          <ul class="pcard-feats">
+            <li>每天 3 次 AI 協助</li>
+            <li>回覆老師的日常通知</li>
+            <li>請假、早退措辭</li>
+            <li class="dim">緊急情境深度分析</li>
+            <li class="dim">衝突策略規劃</li>
+            <li class="dim">親師關係修復建議</li>
+          </ul>
+          <a href="https://line.me/R/ti/p/@qinsishiaoqiaohua" class="pcard-btn line-btn">免費加入 LINE</a>
+        </div>
+
+        <div class="pcard parent-card pop rev d2">
+          <div class="pcard-tag p">單次解鎖</div>
+          <div class="pcard-price"><span class="cur">NT$</span>49</div>
+          <div class="pcard-period">/次，當日有效</div>
+          <ul class="pcard-feats">
+            <li>單一情境完整深度分析</li>
+            <li>三種策略方向比較</li>
+            <li>孩子衝突、霸凌情境</li>
+            <li>親師關係修復建議</li>
+            <li class="dim">無限次使用</li>
+          </ul>
+          <a href="https://line.me/R/ti/p/@qinsishiaoqiaohua" class="pcard-btn outline" style="border-color:var(--rose-bd);color:var(--rose)">解鎖這次 NT$49</a>
+        </div>
+
+        <div class="pcard parent-card rev d3">
+          <div class="pcard-tag p">月費版</div>
+          <div class="pcard-price"><span class="cur">NT$</span>99</div>
+          <div class="pcard-period">/月，隨時取消</div>
+          <ul class="pcard-feats">
+            <li>無限次 AI 協助</li>
+            <li>所有情境全功能</li>
+            <li>孩子狀況記憶</li>
+            <li>親師關係追蹤</li>
+            <li>3 次以上比單次划算</li>
+          </ul>
+          <a href="https://line.me/R/ti/p/@qinsishiaoqiaohua" class="pcard-btn outline">選月費版</a>
+        </div>
+      </div>
+    </div>
+
+    <p style="text-align:center;margin-top:1.5rem;font-size:.75rem;color:var(--ink4);">
+      在 LINE 加入後選擇身份，系統會引導你選擇適合的方案 · 老師版與家長版完全獨立，各自選擇
+    </p>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+
+<!-- ════════ FINAL CTA ════════ -->
+<section class="cta-section" id="cta">
+  <div class="cta-box rev">
+    <h2 class="cta-h">
+      不用再一個人<br>想破頭。<br>
+      <span class="acc">親師悄悄話幫你。</span>
+    </h2>
+    <p class="cta-sub">
+      在 LINE 裡直接用，每天 3 次完全免費。<br>
+      加好友後選擇你的身份，30 秒開始第一次生成。
+    </p>
+    <a href="https://line.me/R/ti/p/@qinsishiaoqiaohua" class="cta-line-btn">
+      <svg width="20" height="20" viewBox="0 0 16 16" fill="none"><path d="M8 1C4.134 1 1 3.698 1 7.03c0 2.072 1.243 3.898 3.13 5.008L3.5 15l3.21-1.69A7.8 7.8 0 008 13.06C11.866 13.06 15 10.362 15 7.03 15 3.698 11.866 1 8 1z" fill="white"/></svg>
+      免費加入 LINE 開始
+    </a>
+    <p class="cta-note">不需要安裝 App · 不需要信用卡 · 每天 3 次永久免費</p>
+  </div>
+</section>
+
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">親師悄悄話</div>
+  <p class="footer-text">
+    說對話，讓親師溝通不再是難題<br>
+    Powered by Google Gemini AI · 專為台灣老師與家長設計<br>
+    <a href="./xiaobiji-marketing.html">老師版詳細說明</a>
+    &nbsp;·&nbsp;
+    <a href="./xiaobiji-parent.html">家長版詳細說明</a>
+  </p>
+</footer>
+
+
+<script>
+const ro=new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting)x.target.classList.add('on')})},{threshold:.08,rootMargin:'0px 0px -30px 0px'});
+document.querySelectorAll('.rev').forEach(el=>ro.observe(el));
+
+function switchPricing(type){
+  document.querySelectorAll('.ptab').forEach(t=>t.classList.remove('active'));
+  document.querySelector(`.ptab.${type}`).classList.add('active');
+  document.querySelector('.pricing-teacher').classList.toggle('show',type==='teacher');
+  document.querySelector('.pricing-parent').classList.toggle('show',type==='parent');
+}
+</script>
+</body>
+</html>
