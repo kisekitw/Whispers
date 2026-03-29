@@ -1,0 +1,7 @@
+node_modules
+dist
+.env
+.env.local
+*.txt
+server_start.txt
+debug_genai.txt

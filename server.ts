@@ -1,8 +1,6 @@
 import express from "express";
 import fs from "fs";
-import { createServer as createViteServer } from "vite";
 import path from "path";
-import { fileURLToPath } from "url";
 import { initializeApp, getApps } from "firebase/app";
 import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, addDoc, query, orderBy, limit, Firestore } from "firebase/firestore";
 import axios from "axios";
@@ -20,17 +18,13 @@ process.on("unhandledRejection", (reason, promise) => {
 
 dotenv.config();
 
-// ESM/CJS compatibility
-const __filename = typeof fileURLToPath === 'function' ? fileURLToPath(import.meta.url) : (typeof __filename !== 'undefined' ? __filename : '');
-const __dirname = typeof path.dirname === 'function' && __filename ? path.dirname(__filename) : (typeof __dirname !== 'undefined' ? __dirname : process.cwd());
-
 // Lazy initialization for Firebase
 let dbInstance: Firestore | null = null;
 function getDb() {
   if (!dbInstance) {
     try {
       console.log("[INIT] Initializing Firebase...");
-      const configPath = path.join(__dirname, "firebase-applet-config.json");
+      const configPath = path.join(process.cwd(), "firebase-applet-config.json");
       if (!fs.existsSync(configPath)) {
         throw new Error("firebase-applet-config.json not found");
       }
@@ -94,7 +88,7 @@ try {
 } catch (e) {}
 
 const app = express();
-const PORT = 3000;
+const PORT = parseInt(process.env.PORT || "3000", 10);
 
 app.set("trust proxy", true);
 
@@ -168,6 +162,9 @@ async function handleLineEvent(event: any) {
   const userId = event.source?.userId;
   if (!userId) return;
 
+  const today = new Date().toISOString().split("T")[0];
+  const db = getDb();
+
   // Debug log for webhook entry
   try {
     await addDoc(collection(db, "logs"), {
@@ -179,9 +176,6 @@ async function handleLineEvent(event: any) {
   } catch (e) {
     console.error("Immediate log failed:", e);
   }
-
-  const today = new Date().toISOString().split("T")[0];
-  const db = getDb();
 
   // Ensure user exists
   let userDoc = await getDoc(doc(db, "users", userId));
@@ -249,13 +243,6 @@ async function sendFollowMessage(userId: string, userType: string) {
   }
 }
 
-async function sendWelcome(userId: string, userType: string) {
-  if (userType === "teacher") {
-    await pushMessage(userId, "👋 歡迎回來！\n\n我是親師悄悄話老師版，幫你搞定：\n📢 家長通知生成\n💬 家長訊息回覆\n🤝 親師衝突處理\n\n免費版每天 3 次，升級後無限使用。\n傳「主選單」開始！");
-  } else {
-    await pushMessage(userId, "👋 歡迎！\n\n我是親師悄悄話家長版，幫你：\n💬 回覆老師的訊息\n🚨 處理孩子在校事件\n🤝 修復親師關係\n\n免費版每天 3 次，遇到緊急情況可單次解鎖（NT$49）。\n傳「主選單」開始！");
-  }
-}
 
 async function handleTextMessage(userId: string, user: any, text: string, replyToken: string) {
   console.log(`Handling text message from ${userId}: ${text}`);
@@ -300,7 +287,9 @@ async function handleStateMessage(userId: string, user: any, text: string, reply
     if (user.userState === "AWAITING_NOTIFY_INPUT") type = "notify";
     else if (user.userState === "AWAITING_REPLY_INPUT") type = "reply";
     else if (user.userState === "AWAITING_CONFLICT_INPUT") type = "conflict";
-    else if (user.userState === "AWAITING_PARENT_INPUT") type = "parent";
+    else if (user.userState === "AWAITING_PARENT_INPUT") type = "parent_daily";
+    else if (user.userState === "AWAITING_PARENT_URGENT_INPUT") type = "parent_urgent";
+    else if (user.userState === "AWAITING_PARENT_REPAIR_INPUT") type = "parent_repair";
 
     const aiResponse = await generateAIContent(userId, user.userType, type, text);
     
@@ -360,9 +349,15 @@ async function handlePostback(userId: string, user: any, data: string, replyToke
     } else if (action === "MENU_CONFLICT") {
       await updateDoc(doc(getDb(), "users", userId), { userState: "AWAITING_CONFLICT_INPUT" });
       await replyText(userId, replyToken, "🤝 請描述發生的衝突或棘手情況，我將為您提供處理建議：");
-    } else if (action === "P_MENU_REPLY" || action === "P_MENU_URGENT" || action === "P_MENU_REPAIR") {
+    } else if (action === "P_MENU_REPLY") {
       await updateDoc(doc(getDb(), "users", userId), { userState: "AWAITING_PARENT_INPUT" });
       await replyText(userId, replyToken, "💬 請描述您想跟老師溝通的情況或貼上老師的訊息：");
+    } else if (action === "P_MENU_URGENT") {
+      await updateDoc(doc(getDb(), "users", userId), { userState: "AWAITING_PARENT_URGENT_INPUT" });
+      await replyText(userId, replyToken, "🚨 請描述孩子在校發生的緊急狀況，我將幫您撰寫謹慎的回應：");
+    } else if (action === "P_MENU_REPAIR") {
+      await updateDoc(doc(getDb(), "users", userId), { userState: "AWAITING_PARENT_REPAIR_INPUT" });
+      await replyText(userId, replyToken, "🤝 請描述希望修復的親師關係情況，我將幫您擬定誠懇的訊息：");
     } else if (action === "MENU_ACCOUNT" || action === "P_MENU_ACCOUNT") {
       const today = new Date().toISOString().split("T")[0];
       const usage = user.usageResetDate === today ? user.usageToday : 0;
@@ -622,7 +617,9 @@ async function generateAIContent(userId: string, userType: string, type: string,
     else if (type === "reply") prompt = buildTeacherReplyPrompt(dataObj, styleJson);
     else if (type === "conflict") prompt = buildConflictPrompt(dataObj, styleJson);
   } else {
-    const dataObj = typeof data === "string" ? { teacherMsg: data } : data;
+    const situationTypeMap: any = { parent_daily: "daily", parent_urgent: "urgent", parent_repair: "repair" };
+    const situationType = situationTypeMap[type] || "daily";
+    const dataObj = typeof data === "string" ? { teacherMsg: data, situationType } : { ...data, situationType };
     prompt = buildParentPrompt(dataObj, styleJson);
   }
 
@@ -723,7 +720,7 @@ async function generateAIContent(userId: string, userType: string, type: string,
   }
 }
 
-// --- AI Generation Logic ---
+// --- Debug & Admin API Routes ---
 app.get("/api/debug-logs", async (req, res) => {
   try {
     const db = getDb();
@@ -785,6 +782,7 @@ async function startServer() {
   try {
     if (process.env.NODE_ENV !== "production") {
       console.log(`[${new Date().toISOString()}] Initializing Vite in middleware mode...`);
+      const { createServer: createViteServer } = await import("vite");
       const vite = await createViteServer({
         server: { middlewareMode: true },
         appType: "spa",
@@ -808,5 +806,3 @@ async function startServer() {
 }
 
 startServer();
-
-// --- LINE Bot Logic ---
