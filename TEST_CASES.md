@@ -17,6 +17,7 @@
 | 共用流程 | TC-25 ~ TC-27 | 回主選單、AI 完成後按鈕 |
 | 錯誤處理 | TC-28 ~ TC-33 | 額度限制、超時、封鎖、空回應、金鑰遺失 |
 | 管理功能 | TC-34 ~ TC-35 | Stats API、測試日誌建立 |
+| 補充測試 | TC-36 ~ TC-51 | 遺漏端點、邊界條件、特殊流程 |
 
 ---
 
@@ -452,6 +453,234 @@ Feature: 管理後台 API
 | TC-33 | API Key 遺失 | 🔍 | 程式碼：`!apiKey → throw GEMINI_API_KEY_MISSING` | 先前部署時實際觸發並顯示正確錯誤訊息 ✓ |
 | TC-34 | Stats API | ✅ | GET /api/stats → 200 `{totalUsers:1, teachers:1, parents:0, recentLogs:[...]}` | |
 | TC-35 | 建立測試日誌 | ✅ | POST /api/debug/create-test-log → 200 `{"status":"ok"}` | |
+
+---
+
+## 分組九：補充測試（邊界條件、遺漏端點、特殊流程）
+
+### TC-36 Debug Logs API
+```gherkin
+Feature: 管理後台 API
+
+  Scenario: 取得最近 50 筆 Firestore 日誌
+    Given 服務正常運行，Firestore 中已有日誌記錄
+    When  發送 GET /api/debug-logs
+    Then  回應狀態碼為 200
+    And   回應為 JSON 陣列
+    And   每筆記錄包含 timestamp、userId、action、status 欄位
+    And   結果依 timestamp 降序排列，最多 50 筆
+```
+
+### TC-37 API 404 處理
+```gherkin
+Feature: 路由錯誤處理
+
+  Scenario: 存取不存在的 API 路由
+    Given 服務正常運行
+    When  發送 GET /api/nonexistent-route
+    Then  回應狀態碼為 404
+    And   回應 JSON 包含 error = "API route not found"
+    And   回應 JSON 包含 method 和 url 欄位（用於除錯）
+```
+
+### TC-38 Webhook OPTIONS 預檢請求
+```gherkin
+Feature: Webhook CORS 支援
+
+  Scenario: 瀏覽器發送 OPTIONS 預檢請求
+    Given 任何呼叫方發送 CORS preflight
+    When  發送 OPTIONS /api/webhook
+    Then  回應狀態碼為 200
+```
+
+### TC-39 Webhook 尾部斜線正規化
+```gherkin
+Feature: URL 正規化
+
+  Scenario: LINE 發送帶尾部斜線的 Webhook URL
+    Given LINE 平台因設定問題帶入 /api/webhook/（尾部斜線）
+    When  發送 POST /api/webhook/（注意結尾斜線）
+    Then  回應狀態碼為 200
+    And   不產生 301/302 重新導向
+    And   事件正常處理（與 /api/webhook 行為相同）
+```
+
+### TC-40 已設身分用戶再次 Follow
+```gherkin
+Feature: 重複加入處理
+
+  Scenario: 已設定身分的用戶封鎖後再解封（re-follow）
+    Given 用戶已存在 Firestore，userType = "teacher"
+    When  LINE 發送 follow 事件（用戶重新加入）
+    Then  Bot 不再顯示身分選擇畫面
+    And   Bot 直接顯示老師主選單
+```
+
+### TC-41 未設身分用戶傳送文字
+```gherkin
+Feature: 未完成身分設定的引導
+
+  Scenario: 用戶加入後未選身分就傳送文字
+    Given 用戶已存在 Firestore，userType = ""（空字串）
+    When  用戶傳送任意文字訊息
+    Then  Bot 回覆身分選擇畫面（「👩‍🏫 我是老師」/「👨‍👩‍👧 我是家長」快速回覆）
+    And   不顯示「請點選選單功能或輸入「主選單」開始。」
+```
+
+### TC-42 "切換身份" / "switch" 文字觸發
+```gherkin
+Feature: 身分切換文字關鍵字
+
+  Scenario: 用戶使用異體字「切換身份」
+    Given 用戶已設定身分
+    When  用戶傳送「切換身份」（份→份 異體字）
+    Then  Bot 顯示身分選擇畫面
+
+  Scenario: 用戶使用英文 switch
+    Given 用戶已設定身分
+    When  用戶傳送「switch」（不分大小寫）
+    Then  Bot 顯示身分選擇畫面
+```
+
+### TC-43 家長帳號資訊（P_MENU_ACCOUNT）
+```gherkin
+Feature: 家長帳號資訊
+
+  Scenario: 家長查看帳號資訊
+    Given 用戶 userType = "parent"，今日已使用 1 次
+    When  用戶點擊 postback action=P_MENU_ACCOUNT
+    Then  Bot 回覆包含「方案：free」
+    And   Bot 回覆包含「今日已用：1 / 3 次」
+    And   提供「🔄 切換身分」和「🏠 回主選單」按鈕
+```
+
+### TC-44 付費方案用戶不受額度限制
+```gherkin
+Feature: 付費方案使用者
+
+  Scenario: plan="paid" 用戶今日已用超過 3 次
+    Given 用戶 plan = "paid"，usageToday = 10
+    When  用戶輸入內容觸發 AI 生成
+    Then  系統不拋出 LIMIT_EXCEEDED 錯誤
+    And   Bot 正常呼叫 Gemini API 並回覆結果
+```
+
+### TC-45 非文字訊息類型（圖片、貼圖）靜默忽略
+```gherkin
+Feature: 不支援的訊息類型處理
+
+  Scenario: 用戶傳送圖片訊息
+    Given 用戶已設定身分
+    When  LINE 發送 message 事件，event.message.type = "image"
+    Then  Bot 不回覆任何訊息（靜默忽略）
+    And   Webhook 回應狀態碼為 200（服務不崩潰）
+
+  Scenario: 用戶傳送貼圖訊息
+    Given 用戶已設定身分
+    When  LINE 發送 message 事件，event.message.type = "sticker"
+    Then  Bot 不回覆任何訊息
+    And   Webhook 回應狀態碼為 200
+```
+
+### TC-46 單一 Webhook 請求含多筆事件
+```gherkin
+Feature: 批次事件處理
+
+  Scenario: LINE 批次傳送兩筆事件（如 follow + 第一則訊息）
+    Given LINE 在同一請求中打包兩筆事件
+    When  POST /api/webhook，events 陣列含 2 筆不同類型的事件
+    Then  每筆事件各自獨立處理
+    And   Webhook 回應狀態碼為 200
+    And   若其中一筆事件處理失敗，不影響另一筆的處理
+```
+
+### TC-47 handleStateMessage 出錯後 userState 自動清除
+```gherkin
+Feature: 錯誤後狀態重置
+
+  Scenario: AI 生成錯誤後用戶狀態被清除
+    Given 用戶 userState = "AWAITING_NOTIFY_INPUT"
+    When  Gemini API 回應超時（LIMIT_EXCEEDED、AI_TIMEOUT 等任一錯誤）
+    Then  Bot 回覆對應的錯誤訊息
+    And   Firestore 將 userState 設為 null（不會讓用戶卡在待輸入狀態）
+    And   用戶下次傳送文字時回到「請點選選單功能」提示
+```
+
+### TC-48 handlePostback 發生例外時的通用錯誤回覆
+```gherkin
+Feature: Postback 錯誤處理
+
+  Scenario: handlePostback 內部發生非預期例外
+    Given Firestore 連線暫時中斷
+    When  用戶觸發任何 postback action（如 MENU_NOTIFY）
+    Then  Bot 回覆「抱歉，處理您的請求時發生錯誤。」
+    And   Webhook 回應狀態碼為 200（不崩潰）
+```
+
+### TC-49 AI 生成非自訂錯誤的通用錯誤訊息
+```gherkin
+Feature: 通用 AI 錯誤處理
+
+  Scenario: Gemini API 回傳非預期的底層錯誤（如網路錯誤）
+    Given Gemini API 因網路問題拋出底層錯誤（非 AI_TIMEOUT/AI_BLOCKED 等）
+    When  用戶輸入內容觸發 AI 生成
+    Then  Bot 回覆「抱歉，生成內容時發生錯誤 [v2.1: ...]，請稍後再試。」
+    And   Firestore 記錄 status = "error"，error 欄位含原始錯誤訊息
+    And   userState 被清除
+```
+
+### TC-50 在待輸入狀態下傳送空白訊息
+```gherkin
+Feature: 邊界輸入處理
+
+  Scenario: 用戶在 AWAITING 狀態下傳送空白或純空格
+    Given 用戶 userState = "AWAITING_NOTIFY_INPUT"
+    When  用戶傳送「   」（純空格，trim 後為空字串）
+    Then  Bot 仍呼叫 Gemini API（使用各 prompt 的預設 fallback 欄位）
+    And   或 Bot 回覆提示「請輸入內容」（視實作而定）
+    And   不發生未處理例外
+```
+
+### TC-51 新用戶 displayName 從 LINE 取得並儲存
+```gherkin
+Feature: 新用戶資料初始化
+
+  Scenario: 成功從 LINE API 取得 displayName
+    Given 用戶首次觸發任何事件（Firestore 無該用戶資料）
+    When  系統呼叫 LINE Profile API 成功取回 displayName
+    Then  Firestore 用戶文件中 displayName 欄位 = LINE 顯示名稱（非「用戶」預設值）
+
+  Scenario: LINE API 取得 displayName 失敗
+    Given 用戶首次觸發任何事件
+    When  LINE Profile API 呼叫失敗（網路錯誤或 token 問題）
+    Then  系統不崩潰，displayName 降格為「用戶」
+    And   Firestore 用戶文件正常建立
+```
+
+---
+
+## 測試補充執行結果
+
+> 版本：v2.1 補充測試 | 執行日期：待執行
+
+| TC | 描述 | 狀態 | 備註 |
+|----|------|------|------|
+| TC-36 | debug-logs API | 🔍 | 端點存在（line 724），待 curl 驗證 |
+| TC-37 | API 404 handler | 🔍 | 端點存在（line 774），待 curl 驗證 |
+| TC-38 | Webhook OPTIONS | 🔍 | 端點存在（line 145），待 curl 驗證 |
+| TC-39 | 尾部斜線正規化 | 🔍 | Middleware 存在（line 102），邏輯正確 |
+| TC-40 | 已設身分用戶 re-follow | 🔍 | sendFollowMessage 有 userType 判斷（line 234），邏輯正確 |
+| TC-41 | 未設身分用戶傳送文字 | 🔍 | handleTextMessage line 251 有 !userType 判斷，邏輯正確 |
+| TC-42 | "切換身份"/"switch" 文字 | 🔍 | line 263 陣列含三個關鍵字，邏輯正確 |
+| TC-43 | P_MENU_ACCOUNT | ⏭️ | 需真實 LINE 家長帳號驗證顯示內容 |
+| TC-44 | paid 方案不限額度 | 🔍 | line 607 條件：`plan === "free" && usageToday >= 3`，邏輯正確 |
+| TC-45 | 非文字訊息靜默忽略 | 🔍 | line 227 只處理 type=text，其他類型靜默，邏輯正確 |
+| TC-46 | 多事件批次處理 | 🔍 | line 126 for loop 加獨立 try/catch，邏輯正確 |
+| TC-47 | 錯誤後 userState 清除 | 🔍 | line 308 error catch 有 updateDoc userState=null，邏輯正確 |
+| TC-48 | handlePostback 通用錯誤 | 🔍 | line 376 catch 有 replyText 錯誤訊息，邏輯正確 |
+| TC-49 | 通用 AI 錯誤訊息 | 🔍 | line 317-321 else 分支，邏輯正確 |
+| TC-50 | 空白輸入 | 🔍 | prompt builder 有 fallback（如 `data.content \|\| "請協助..."`），不崩潰 |
+| TC-51 | displayName 儲存 | 🔍 | line 187-194 有 try/catch，成功設名稱，失敗降格「用戶」，邏輯正確 |
 
 ---
 
