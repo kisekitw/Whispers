@@ -1,0 +1,69 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Teacher or Parent user profile",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "LINE User ID" },
+        "userType": { "type": "string", "enum": ["teacher", "parent"], "description": "User role" },
+        "plan": { "type": "string", "enum": ["free", "monthly", "semester", "once", "blocked"], "description": "Subscription plan" },
+        "usageToday": { "type": "integer", "description": "Usage count for today" },
+        "usageResetDate": { "type": "string", "format": "date", "description": "YYYY-MM-DD" },
+        "planExpiry": { "type": "string", "format": "date", "description": "YYYY-MM-DD" },
+        "displayName": { "type": "string", "description": "LINE display name" },
+        "className": { "type": "string", "description": "Class name for teacher or child's class for parent" },
+        "styleJson": { "type": "string", "description": "Personal style settings JSON" },
+        "inviteCode": { "type": "string", "description": "Invite code for teachers" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "lastActiveAt": { "type": "string", "format": "date-time", "description": "Last activity timestamp" }
+      },
+      "required": ["userId", "userType", "plan", "usageToday", "usageResetDate", "createdAt", "lastActiveAt"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Payment records",
+      "type": "object",
+      "properties": {
+        "orderId": { "type": "string", "description": "Order ID (TN + timestamp)" },
+        "userId": { "type": "string", "description": "LINE User ID" },
+        "userType": { "type": "string", "description": "User role at time of order" },
+        "plan": { "type": "string", "description": "Plan purchased" },
+        "amount": { "type": "integer", "description": "Amount in TWD" },
+        "status": { "type": "string", "enum": ["pending", "paid", "failed"], "description": "Payment status" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Order creation time" },
+        "paidAt": { "type": "string", "format": "date-time", "description": "Payment completion time" }
+      },
+      "required": ["orderId", "userId", "userType", "plan", "amount", "status", "createdAt"]
+    },
+    "Log": {
+      "title": "Log",
+      "description": "AI usage logs",
+      "type": "object",
+      "properties": {
+        "timestamp": { "type": "string", "format": "date-time", "description": "Log timestamp" },
+        "userId": { "type": "string", "description": "LINE User ID" },
+        "userType": { "type": "string", "description": "User role" },
+        "action": { "type": "string", "description": "Action type" },
+        "input": { "type": "string", "description": "Input summary JSON" },
+        "output": { "type": "string", "description": "AI output content" },
+        "model": { "type": "string", "description": "AI model used" }
+      },
+      "required": ["timestamp", "userId", "userType", "action", "input", "output", "model"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User collection indexed by LINE User ID"
+    },
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Payment orders collection"
+    },
+    "/logs/{logId}": {
+      "schema": "Log",
+      "description": "Usage logs collection"
+    }
+  }
+}

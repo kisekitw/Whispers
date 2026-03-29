@@ -1,0 +1,5 @@
+{
+  "name": "親師悄悄話",
+  "description": "老師與家長的 AI 溝通助理，包含 LINE Bot 後端、Firebase 資料庫與 React 管理後台。",
+  "requestFramePermissions": []
+}
