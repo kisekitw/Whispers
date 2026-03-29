@@ -10,6 +10,7 @@ async function build() {
     format: 'cjs',
     external: [
       'express',
+      'express-session',
       'vite',
       'firebase/app',
       'firebase/firestore',

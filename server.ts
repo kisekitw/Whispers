@@ -1,4 +1,5 @@
 import express from "express";
+import session from "express-session";
 import fs from "fs";
 import path from "path";
 import { initializeApp, getApps } from "firebase/app";
@@ -6,6 +7,7 @@ import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, addD
 import axios from "axios";
 import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import dotenv from "dotenv";
+import { createAdminRouter } from "./admin-routes";
 
 // Error handling for silent crashes
 process.on("uncaughtException", (err) => {
@@ -95,6 +97,24 @@ app.set("trust proxy", true);
 // Global body parsers - moved to top for all routes
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Session middleware (required before admin routes)
+app.use(session({
+  secret: process.env.ADMIN_SESSION_SECRET || "whispers-admin-secret-please-set-env",
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === "production",
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+  },
+}));
+
+// Admin routes — AdminLTE dashboard replaces the React SPA
+app.use("/admin", createAdminRouter(getDb));
+
+// Root → redirect to admin panel
+app.get("/", (req, res) => res.redirect("/admin"));
 
 // Global request logger
 app.use((req, res, next) => {
@@ -604,7 +624,8 @@ async function generateAIContent(userId: string, userType: string, type: string,
   const today = new Date().toISOString().split("T")[0];
   let usageToday = userData.usageResetDate === today ? userData.usageToday : 0;
 
-  if (userData.plan === "free" && usageToday >= 3) {
+  const hasTrial = userData.trialEndDate && new Date(userData.trialEndDate) > new Date();
+  if (userData.plan === "free" && !hasTrial && usageToday >= 3) {
     throw new Error("LIMIT_EXCEEDED");
   }
 
@@ -790,11 +811,11 @@ async function startServer() {
       app.use(vite.middlewares);
       console.log(`[${new Date().toISOString()}] Vite middleware attached.`);
     } else {
+      // Production: AdminLTE serves all UI; static assets (JS/CSS) still from dist
       const distPath = path.join(process.cwd(), "dist");
       app.use(express.static(distPath));
-      app.get("*", (req, res) => {
-        res.sendFile(path.join(distPath, "index.html"));
-      });
+      // Any unmatched route → redirect to admin panel
+      app.get("*", (req, res) => res.redirect("/admin"));
     }
 
     app.listen(PORT, "0.0.0.0", () => {
