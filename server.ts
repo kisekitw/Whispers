@@ -293,7 +293,70 @@ async function handleTextMessage(userId: string, user: any, text: string, replyT
   }
 }
 
+async function sendStyleComplete(userId: string, replyToken: string | null, style: any) {
+  const avoidDisplay = (style.avoidWords || []).length > 0
+    ? style.avoidWords.join("、")
+    : "無";
+  await sendResponse(
+    userId,
+    replyToken,
+    `🎉 溝通風格已儲存！\n\n` +
+    `班級：${style.className || "未設定"}\n` +
+    `開場白：${style.opening || "未設定"}\n` +
+    `避免詞語：${avoidDisplay}\n\n` +
+    `之後每次生成的內容，AI 都會自動套用你的風格 ✨`,
+    [{ label: "🏠 回主選單", data: "action=BACK_MENU" }]
+  );
+}
+
 async function handleStateMessage(userId: string, user: any, text: string, replyToken: string) {
+  // ── 風格設定精靈（無 AI、無 loading）──────────────────────
+  if (user.userState === "AWAITING_STYLE_CLASSNAME") {
+    const style = user.styleJson ? JSON.parse(user.styleJson) : {};
+    style.className = text.trim();
+    await updateDoc(doc(getDb(), "users", userId), {
+      userState: "AWAITING_STYLE_OPENING",
+      styleJson: JSON.stringify(style),
+    });
+    await replyText(
+      userId,
+      replyToken,
+      `✅ 班級：${style.className}\n\n第 2 步：你的慣用開場白是？\n（例如：各位家長您好、親愛的家長您好）`
+    );
+    return;
+  }
+
+  if (user.userState === "AWAITING_STYLE_OPENING") {
+    const style = user.styleJson ? JSON.parse(user.styleJson) : {};
+    style.opening = text.trim();
+    await updateDoc(doc(getDb(), "users", userId), {
+      userState: "AWAITING_STYLE_AVOID",
+      styleJson: JSON.stringify(style),
+    });
+    await sendResponse(
+      userId,
+      replyToken,
+      `✅ 開場白：「${style.opening}」\n\n第 3 步：有沒有你不想出現在文字裡的詞語？\n（例如：麻煩家長、請務必）\n\n多個詞以逗號分隔，也可以直接跳過。`,
+      [{ label: "⏭️ 跳過這步", data: "action=STYLE_SKIP_AVOID" }]
+    );
+    return;
+  }
+
+  if (user.userState === "AWAITING_STYLE_AVOID") {
+    const style = user.styleJson ? JSON.parse(user.styleJson) : {};
+    style.avoidWords = text
+      .split(/[，,、\s]+/)
+      .map((w: string) => w.trim())
+      .filter((w: string) => w.length > 0);
+    await updateDoc(doc(getDb(), "users", userId), {
+      userState: null,
+      styleJson: JSON.stringify(style),
+    });
+    await sendStyleComplete(userId, replyToken, style);
+    return;
+  }
+  // ─────────────────────────────────────────────────────────
+
   try {
     // 1. Start loading animation (doesn't use replyToken)
     await startLoadingAnimation(userId);
@@ -380,10 +443,56 @@ async function handlePostback(userId: string, user: any, data: string, replyToke
     } else if (action === "MENU_ACCOUNT" || action === "P_MENU_ACCOUNT") {
       const today = new Date().toISOString().split("T")[0];
       const usage = user.usageResetDate === today ? user.usageToday : 0;
-      await sendResponse(userId, replyToken, `👤 帳號資訊\n──────────────\n方案：${user.plan}\n今日已用：${usage} / 3 次`, [
-        { label: "🔄 切換身分", data: "action=RESET_TYPE" },
-        { label: "🏠 回主選單", data: "action=BACK_MENU" }
-      ]);
+      const isTeacher = user.userType === "teacher";
+      const style = isTeacher && user.styleJson ? JSON.parse(user.styleJson) : null;
+      const styleLine = isTeacher
+        ? (style?.className
+            ? `\n班級：${style.className}  開場白：${style.opening || "未設定"}`
+            : "\n溝通風格：尚未設定")
+        : "";
+      const buttons = isTeacher
+        ? [
+            { label: "🎨 設定溝通風格", data: "action=MENU_STYLE" },
+            { label: "🔄 切換身分", data: "action=RESET_TYPE" },
+            { label: "🏠 回主選單", data: "action=BACK_MENU" },
+          ]
+        : [
+            { label: "🔄 切換身分", data: "action=RESET_TYPE" },
+            { label: "🏠 回主選單", data: "action=BACK_MENU" },
+          ];
+      await sendResponse(
+        userId,
+        replyToken,
+        `👤 帳號資訊\n──────────────\n方案：${user.plan}\n今日已用：${usage} / 3 次${styleLine}`,
+        buttons
+      );
+    } else if (action === "MENU_STYLE") {
+      if (user.userType !== "teacher") {
+        await replyMainMenu(userId, user.userType, replyToken);
+        return;
+      }
+      const existingStyle = user.styleJson ? JSON.parse(user.styleJson) : null;
+      const preview = existingStyle?.className
+        ? `\n\n目前設定：${existingStyle.className} ／「${existingStyle.opening || "未設定"}」`
+        : "";
+      await updateDoc(doc(getDb(), "users", userId), { userState: "AWAITING_STYLE_CLASSNAME" });
+      await replyText(
+        userId,
+        replyToken,
+        `🎨 溝通風格設定${preview}\n\n第 1 步：你的班級名稱是？\n（例如：五年二班、三年甲班）`
+      );
+    } else if (action === "STYLE_SKIP_AVOID") {
+      if (user.userState !== "AWAITING_STYLE_AVOID") {
+        await replyMainMenu(userId, user.userType, replyToken);
+        return;
+      }
+      const existingStyle = user.styleJson ? JSON.parse(user.styleJson) : {};
+      existingStyle.avoidWords = [];
+      await updateDoc(doc(getDb(), "users", userId), {
+        userState: null,
+        styleJson: JSON.stringify(existingStyle),
+      });
+      await sendStyleComplete(userId, replyToken, existingStyle);
     } else if (action === "RESET_TYPE") {
       await sendResponse(userId, replyToken, "請選擇您的新身份：", [
         { label: "👩‍🏫 我是老師", data: "action=SET_TYPE&value=teacher" },
@@ -412,7 +521,8 @@ async function replyMainMenu(userId: string, userType: string, replyToken: strin
       { label: "📢 家長通知", data: "action=MENU_NOTIFY" },
       { label: "💬 回覆家長", data: "action=MENU_REPLY" },
       { label: "🤝 衝突處理", data: "action=MENU_CONFLICT" },
-      { label: "👤 帳號資訊", data: "action=MENU_ACCOUNT" }
+      { label: "👤 帳號資訊", data: "action=MENU_ACCOUNT" },
+      { label: "🎨 溝通風格", data: "action=MENU_STYLE" }
     ]);
   } else {
     await sendResponse(userId, replyToken, "需要什麼幫助？", [
