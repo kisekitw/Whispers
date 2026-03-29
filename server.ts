@@ -644,13 +644,14 @@ function buildTeacherReplyPrompt(data: any, style: any) {
 
   return `你是台灣國小老師，幫我撰寫回覆家長的訊息範本。
 
+【慣用開場白】${style?.opening || '家長您好'}
 【家長訊息】${parentMsg}
 【家長情緒】${emotion}
 【希望達到的結果】${goal}
 ${data.context ? `【補充背景】${data.context}` : ''}
 ${avoid}
 
-直接輸出回覆內容，不加說明。
+直接輸出回覆內容，不加說明。請使用上方的慣用開場白作為回覆的第一句話。
 語氣誠懇有溫度，不卑不亢，100～160字，繁體中文。`;
 }
 
@@ -673,12 +674,15 @@ function buildConflictPrompt(data: any, style: any) {
   const stance = stanceMap[data.stance] || '有誤會需澄清';
   const need = needMap[data.need] || '謹慎回應訊息';
 
+  const avoid = (style?.avoidWords || []).length > 0 ? `請避免使用：${style.avoidWords.join('、')}` : '';
+
   return `你是台灣學校親師溝通顧問，協助老師處理衝突。
 
 【事件描述】${situation}
 【管道】${channel}
 【老師立場】${stance}
 【需要協助】${need}
+${avoid}
 
 請提供：
 1. 【情況分析】（2～3句，點出核心問題）
