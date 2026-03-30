@@ -318,10 +318,14 @@ async function handleStateMessage(userId: string, user: any, text: string, reply
       userState: "AWAITING_STYLE_OPENING",
       styleJson: JSON.stringify(style),
     });
-    await replyText(
+    const step2Buttons = style.opening
+      ? [{ label: "⏭️ 保留現有開場白", data: "action=STYLE_SKIP_OPENING" }]
+      : [];
+    await sendResponse(
       userId,
       replyToken,
-      `✅ 班級：${style.className}\n\n第 2 步：你的慣用開場白是？\n（例如：各位家長您好、親愛的家長您好）`
+      `✅ 班級：${style.className}\n\n第 2 步：你的慣用開場白是？\n（例如：各位家長您好、親愛的家長您好）`,
+      step2Buttons
     );
     return;
   }
@@ -476,10 +480,14 @@ async function handlePostback(userId: string, user: any, data: string, replyToke
         ? `\n\n目前設定：${existingStyle.className} ／「${existingStyle.opening || "未設定"}」`
         : "";
       await updateDoc(doc(getDb(), "users", userId), { userState: "AWAITING_STYLE_CLASSNAME" });
-      await replyText(
+      const step1Buttons = existingStyle?.className
+        ? [{ label: "⏭️ 保留現有班級", data: "action=STYLE_SKIP_CLASSNAME" }]
+        : [];
+      await sendResponse(
         userId,
         replyToken,
-        `🎨 溝通風格設定${preview}\n\n第 1 步：你的班級名稱是？\n（例如：五年二班、三年甲班）`
+        `🎨 溝通風格設定${preview}\n\n第 1 步：你的班級名稱是？\n（例如：五年二班、三年甲班）`,
+        step1Buttons
       );
     } else if (action === "STYLE_SKIP_AVOID") {
       if (user.userState !== "AWAITING_STYLE_AVOID") {
@@ -493,6 +501,35 @@ async function handlePostback(userId: string, user: any, data: string, replyToke
         styleJson: JSON.stringify(existingStyle),
       });
       await sendStyleComplete(userId, replyToken, existingStyle);
+    } else if (action === "STYLE_SKIP_CLASSNAME") {
+      if (user.userState !== "AWAITING_STYLE_CLASSNAME") {
+        await replyMainMenu(userId, user.userType, replyToken);
+        return;
+      }
+      const style = user.styleJson ? JSON.parse(user.styleJson) : {};
+      await updateDoc(doc(getDb(), "users", userId), { userState: "AWAITING_STYLE_OPENING" });
+      const step2Buttons = style.opening
+        ? [{ label: "⏭️ 保留現有開場白", data: "action=STYLE_SKIP_OPENING" }]
+        : [];
+      await sendResponse(
+        userId,
+        replyToken,
+        `✅ 班級保留：${style.className || "未設定"}\n\n第 2 步：你的慣用開場白是？\n（例如：各位家長您好、親愛的家長您好）`,
+        step2Buttons
+      );
+    } else if (action === "STYLE_SKIP_OPENING") {
+      if (user.userState !== "AWAITING_STYLE_OPENING") {
+        await replyMainMenu(userId, user.userType, replyToken);
+        return;
+      }
+      const style = user.styleJson ? JSON.parse(user.styleJson) : {};
+      await updateDoc(doc(getDb(), "users", userId), { userState: "AWAITING_STYLE_AVOID" });
+      await sendResponse(
+        userId,
+        replyToken,
+        `✅ 開場白保留：「${style.opening || "未設定"}」\n\n第 3 步：有沒有你不想出現在文字裡的詞語？\n（例如：麻煩家長、請務必）\n\n多個詞以逗號分隔，也可以直接跳過。`,
+        [{ label: "⏭️ 跳過這步", data: "action=STYLE_SKIP_AVOID" }]
+      );
     } else if (action === "RESET_TYPE") {
       await sendResponse(userId, replyToken, "請選擇您的新身份：", [
         { label: "👩‍🏫 我是老師", data: "action=SET_TYPE&value=teacher" },
