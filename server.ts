@@ -276,7 +276,7 @@ async function handleTextMessage(userId: string, user: any, text: string, replyT
   }
 
   // Simple routing for now
-  if (["主選單", "選單", "menu"].includes(text.toLowerCase())) {
+  if (["主選單", "回主選單", "選單", "menu"].includes(text.toLowerCase())) {
     await updateDoc(doc(getDb(), "users", userId), { userState: null });
     await replyMainMenu(userId, user.userType, replyToken);
   } else if (["切換身分", "切換身份", "switch"].includes(text.toLowerCase())) {
@@ -477,7 +477,7 @@ async function handlePostback(userId: string, user: any, data: string, replyToke
       }
       const existingStyle = user.styleJson ? JSON.parse(user.styleJson) : null;
       const preview = existingStyle?.className
-        ? `\n\n目前設定：${existingStyle.className} ／「${existingStyle.opening || "未設定"}」`
+        ? `\n\n目前設定：\n班級：${existingStyle.className}\n開場白：${existingStyle.opening || "未設定"}\n避免詞語：${(existingStyle.avoidWords || []).length > 0 ? existingStyle.avoidWords.join("、") : "無"}`
         : "";
       await updateDoc(doc(getDb(), "users", userId), { userState: "AWAITING_STYLE_CLASSNAME" });
       const step1Buttons = existingStyle?.className
@@ -486,7 +486,7 @@ async function handlePostback(userId: string, user: any, data: string, replyToke
       await sendResponse(
         userId,
         replyToken,
-        `🎨 溝通風格設定${preview}\n\n第 1 步：你的班級名稱是？\n（例如：五年二班、三年甲班）`,
+        `🎨 溝通風格設定${preview}\n\n第 1 步：輸入新的班級名稱，或點「保留」繼續：\n（例如：五年二班、三年甲班）`,
         step1Buttons
       );
     } else if (action === "STYLE_SKIP_AVOID") {
@@ -514,7 +514,7 @@ async function handlePostback(userId: string, user: any, data: string, replyToke
       await sendResponse(
         userId,
         replyToken,
-        `✅ 班級保留：${style.className || "未設定"}\n\n第 2 步：你的慣用開場白是？\n（例如：各位家長您好、親愛的家長您好）`,
+        `✅ 班級保留：${style.className || "未設定"}\n\n第 2 步：輸入新的慣用開場白，或點「保留」繼續：\n（例如：各位家長您好、親愛的家長您好）`,
         step2Buttons
       );
     } else if (action === "STYLE_SKIP_OPENING") {
