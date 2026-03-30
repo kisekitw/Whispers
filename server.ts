@@ -926,11 +926,20 @@ app.get("/api/stats", async (req, res) => {
     const usersSnapshot = await getDocs(collection(db, "users"));
     const logsSnapshot = await getDocs(query(collection(db, "logs"), orderBy("timestamp", "desc"), limit(10)));
     
+    const displayNameMap: Record<string, string> = {};
+    usersSnapshot.docs.forEach(d => {
+      const u = d.data();
+      if (u.displayName) displayNameMap[d.id] = u.displayName;
+    });
+
     const stats = {
       totalUsers: usersSnapshot.size,
       teachers: usersSnapshot.docs.filter(d => d.data().userType === "teacher").length,
       parents: usersSnapshot.docs.filter(d => d.data().userType === "parent").length,
-      recentLogs: logsSnapshot.docs.map(d => d.data()),
+      recentLogs: logsSnapshot.docs.map(d => {
+        const log = d.data();
+        return { ...log, displayName: displayNameMap[log.userId] || null };
+      }),
     };
     res.json(stats);
   } catch (e: any) {

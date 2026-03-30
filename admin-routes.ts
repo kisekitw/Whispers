@@ -320,6 +320,7 @@ function dashboardContent(stats: {
             <tbody>
               <tr><th style="width:120px">時間</th><td id="ld-time"></td></tr>
               <tr><th>使用者 ID</th><td id="ld-userId" class="text-monospace small"></td></tr>
+              <tr><th>顯示名稱</th><td id="ld-displayName"></td></tr>
               <tr><th>類型</th><td id="ld-userType"></td></tr>
               <tr><th>動作</th><td id="ld-action"></td></tr>
               <tr><th>狀態</th><td id="ld-status"></td></tr>
@@ -440,6 +441,7 @@ function dashboardContent(stats: {
 
       document.getElementById('ld-time').textContent = log.timestamp || '-';
       document.getElementById('ld-userId').textContent = log.userId || '-';
+      document.getElementById('ld-displayName').textContent = log.displayName || '-';
       document.getElementById('ld-userType').textContent =
         log.userType === 'teacher' ? '老師' : log.userType === 'parent' ? '家長' : (log.userType || '-');
       document.getElementById('ld-action').textContent = log.action || '-';
@@ -627,12 +629,21 @@ export function createAdminRouter(getDb: () => Firestore) {
         return ts.startsWith(today) && d.data().status === 'success';
       }).length;
 
+      const displayNameMap: Record<string, string> = {};
+      usersSnap.docs.forEach(d => {
+        const u = d.data();
+        if (u.displayName) displayNameMap[d.id] = u.displayName;
+      });
+
       const stats = {
         totalUsers: usersSnap.size,
         teachers: usersSnap.docs.filter(d => d.data().userType === 'teacher').length,
         parents: usersSnap.docs.filter(d => d.data().userType === 'parent').length,
         todayActive,
-        recentLogs: logsSnap.docs.map(d => d.data()),
+        recentLogs: logsSnap.docs.map(d => {
+          const log = d.data();
+          return { ...log, displayName: displayNameMap[log.userId] || null };
+        }),
       };
 
       const flash = getFlash(req.session);

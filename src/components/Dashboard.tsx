@@ -260,7 +260,10 @@ export default function Dashboard() {
                             </div>
                           </div>
                           <div className="flex justify-between items-center pt-4 border-t border-black/5 text-[10px] text-gray-400 uppercase tracking-widest">
-                            <span>User ID: {log.userId}</span>
+                            <span>
+                              {log.displayName && <span className="text-gray-600 normal-case mr-2">{log.displayName}</span>}
+                              User ID: {log.userId}
+                            </span>
                             <span>Model: {log.model || "N/A"}</span>
                           </div>
                         </div>
