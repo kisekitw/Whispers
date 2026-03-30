@@ -495,7 +495,6 @@ async function handlePostback(userId: string, user: any, data: string, replyToke
         return;
       }
       const existingStyle = user.styleJson ? JSON.parse(user.styleJson) : {};
-      existingStyle.avoidWords = [];
       await updateDoc(doc(getDb(), "users", userId), {
         userState: null,
         styleJson: JSON.stringify(existingStyle),
