@@ -18,7 +18,8 @@ $envString = (
     "GEMINI_API_KEY=$($envVars['GEMINI_API_KEY'])",
     "LINE_CHANNEL_ID=$($envVars['LINE_CHANNEL_ID'])",
     "LINE_CHANNEL_SECRET=$($envVars['LINE_CHANNEL_SECRET'])",
-    "LINE_CHANNEL_ACCESS_TOKEN=$($envVars['LINE_CHANNEL_ACCESS_TOKEN'])"
+    "LINE_CHANNEL_ACCESS_TOKEN=$($envVars['LINE_CHANNEL_ACCESS_TOKEN'])",
+    "ADMIN_PASSWORD=$($envVars['ADMIN_PASSWORD'])"
 ) -join ","
 
 Write-Host "[Deploy] $service ($region / $project)"
