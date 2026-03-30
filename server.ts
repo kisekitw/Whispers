@@ -221,6 +221,7 @@ async function handleLineEvent(event: any) {
       createdAt: new Date().toISOString(),
       lastActiveAt: new Date().toISOString(),
       displayName,
+      childProfile: null,
     };
     await setDoc(doc(db, "users", userId), userData);
   } else {
@@ -277,10 +278,10 @@ async function handleTextMessage(userId: string, user: any, text: string, replyT
 
   // Simple routing for now
   if (["主選單", "回主選單", "選單", "menu"].includes(text.toLowerCase())) {
-    await updateDoc(doc(getDb(), "users", userId), { userState: null });
+    await updateDoc(doc(getDb(), "users", userId), { userState: null, pendingInput: null, lastGenInput: null });
     await replyMainMenu(userId, user.userType, replyToken);
   } else if (["切換身分", "切換身份", "switch"].includes(text.toLowerCase())) {
-    await updateDoc(doc(getDb(), "users", userId), { userState: null });
+    await updateDoc(doc(getDb(), "users", userId), { userState: null, pendingInput: null, lastGenInput: null });
     await sendResponse(userId, replyToken, "請選擇您的新身份：", [
       { label: "👩‍🏫 我是老師", data: "action=SET_TYPE&value=teacher" },
       { label: "👨‍👩‍👧 我是家長", data: "action=SET_TYPE&value=parent" }
@@ -306,6 +307,37 @@ async function sendStyleComplete(userId: string, replyToken: string | null, styl
     `避免詞語：${avoidDisplay}\n\n` +
     `之後每次生成的內容，AI 都會自動套用你的風格 ✨`,
     [{ label: "🏠 回主選單", data: "action=BACK_MENU" }]
+  );
+}
+
+async function sendChildProfileComplete(userId: string, replyToken: string | null, cp: any) {
+  await sendResponse(
+    userId,
+    replyToken,
+    `🎉 孩子資料已儲存！\n\n` +
+    `孩子稱呼：${cp.childName || "未設定"}\n` +
+    `年級班級：${cp.grade || "未設定"}\n` +
+    `孩子特質：${cp.traits || "未設定"}\n` +
+    `班導師：${cp.teacherName || "未設定"}\n\n` +
+    `之後 AI 生成的回覆，都會自動帶入孩子的資訊 ✨`,
+    [{ label: "🏠 回主選單", data: "action=BACK_MENU" }]
+  );
+}
+
+async function startChildWizard(userId: string, replyToken: string | null, existingCp: any) {
+  const hasExisting = existingCp?.childName;
+  const step1Buttons = hasExisting
+    ? [{ label: "⏭️ 保留現有稱呼", data: "action=CHILD_WIZARD_SKIP" }]
+    : [{ label: "⏭️ 跳過這步", data: "action=CHILD_WIZARD_SKIP" }];
+  const preview = hasExisting
+    ? `\n\n目前資料：\n孩子稱呼：${existingCp.childName || "未設定"}\n年級班級：${existingCp.grade || "未設定"}\n孩子特質：${existingCp.traits || "未設定"}\n班導師：${existingCp.teacherName || "未設定"}`
+    : "";
+  await updateDoc(doc(getDb(), "users", userId), { userState: "AWAITING_CHILD_NAME" });
+  await sendResponse(
+    userId,
+    replyToken,
+    `👶 孩子資料設定${preview}\n\n第 1 步：孩子的暱稱或姓名是？\n（例如：小明、Emily、安安）`,
+    step1Buttons
   );
 }
 
@@ -361,10 +393,166 @@ async function handleStateMessage(userId: string, user: any, text: string, reply
   }
   // ─────────────────────────────────────────────────────────
 
+  // ── 孩子資料設定精靈 ───────────────────────────────────
+  if (user.userState === "AWAITING_CHILD_NAME") {
+    const cp = user.childProfile || {};
+    cp.childName = text.trim();
+    await updateDoc(doc(getDb(), "users", userId), {
+      userState: "AWAITING_CHILD_GRADE",
+      childProfile: cp,
+    });
+    await sendResponse(userId, replyToken,
+      `✅ 孩子稱呼：${cp.childName}\n\n第 2 步：孩子的年級班級是？\n（例如：國小三年級甲班、二年一班）`,
+      [{ label: "⏭️ 跳過這步", data: "action=CHILD_WIZARD_SKIP" }]
+    );
+    return;
+  }
+
+  if (user.userState === "AWAITING_CHILD_GRADE") {
+    const cp = user.childProfile || {};
+    cp.grade = text.trim();
+    await updateDoc(doc(getDb(), "users", userId), {
+      userState: "AWAITING_CHILD_TRAITS",
+      childProfile: cp,
+    });
+    await sendResponse(userId, replyToken,
+      `✅ 年級班級：${cp.grade}\n\n第 3 步：孩子有什麼特質或備註嗎？\n（例如：活潑好動、對數學有興趣、有輕微過動）`,
+      [{ label: "⏭️ 跳過這步", data: "action=CHILD_WIZARD_SKIP" }]
+    );
+    return;
+  }
+
+  if (user.userState === "AWAITING_CHILD_TRAITS") {
+    const cp = user.childProfile || {};
+    cp.traits = text.trim();
+    await updateDoc(doc(getDb(), "users", userId), {
+      userState: "AWAITING_CHILD_TEACHER",
+      childProfile: cp,
+    });
+    await sendResponse(userId, replyToken,
+      `✅ 孩子特質：${cp.traits}\n\n第 4 步：班導師怎麼稱呼？\n（例如：王老師、陳老師）`,
+      [{ label: "⏭️ 跳過這步", data: "action=CHILD_WIZARD_SKIP" }]
+    );
+    return;
+  }
+
+  if (user.userState === "AWAITING_CHILD_TEACHER") {
+    const cp = user.childProfile || {};
+    cp.teacherName = text.trim();
+    await updateDoc(doc(getDb(), "users", userId), {
+      userState: null,
+      childProfile: cp,
+    });
+    await sendChildProfileComplete(userId, replyToken, cp);
+    return;
+  }
+  // ─────────────────────────────────────────────────────────
+
+  // ── 澄清狀態：用戶打字而非點按鈕 ──────────────────────
+  if (["AWAITING_NOTIFY_CLARIFY", "AWAITING_REPLY_CLARIFY", "AWAITING_CONFLICT_CLARIFY", "AWAITING_PARENT_CLARIFY"].includes(user.userState)) {
+    await replyText(userId, replyToken, "請點選上方按鈕選擇，或輸入「主選單」重新開始。");
+    return;
+  }
+  // ─────────────────────────────────────────────────────────
+
+  // ── AI 功能：儲存輸入，進入澄清流程 ──────────────────────
+  if (user.userState === "AWAITING_NOTIFY_INPUT") {
+    await updateDoc(doc(getDb(), "users", userId), {
+      userState: "AWAITING_NOTIFY_CLARIFY",
+      pendingInput: JSON.stringify({ type: "notify", text }),
+    });
+    const clarifyQ_notify = await generateClarifyQuestion(text, "notify") ?? "📢 通知語氣偏好？";
+    await sendResponse(userId, replyToken, clarifyQ_notify, [
+      { label: "📋 正式專業", data: "action=NOTIFY_TONE&value=formal" },
+      { label: "😊 適中親切", data: "action=NOTIFY_TONE&value=mid" },
+      { label: "🌸 溫馨活潑", data: "action=NOTIFY_TONE&value=warm" },
+      { label: "⚡ 直接生成", data: "action=SKIP_CLARIFY" },
+    ]);
+    return;
+  }
+
+  if (user.userState === "AWAITING_REPLY_INPUT") {
+    await updateDoc(doc(getDb(), "users", userId), {
+      userState: "AWAITING_REPLY_CLARIFY",
+      pendingInput: JSON.stringify({ type: "reply", text }),
+    });
+    const clarifyQ_reply = await generateClarifyQuestion(text, "reply") ?? "💬 家長目前的情緒？";
+    await sendResponse(userId, replyToken, clarifyQ_reply, [
+      { label: "😌 情緒平穩", data: "action=REPLY_EMOTION&value=calm" },
+      { label: "😟 有些擔憂", data: "action=REPLY_EMOTION&value=worried" },
+      { label: "😤 語氣不滿", data: "action=REPLY_EMOTION&value=upset" },
+      { label: "😰 非常焦慮", data: "action=REPLY_EMOTION&value=anxious" },
+      { label: "⚡ 直接生成", data: "action=SKIP_CLARIFY" },
+    ]);
+    return;
+  }
+
+  if (user.userState === "AWAITING_CONFLICT_INPUT") {
+    await updateDoc(doc(getDb(), "users", userId), {
+      userState: "AWAITING_CONFLICT_CLARIFY",
+      pendingInput: JSON.stringify({ type: "conflict", text }),
+    });
+    const clarifyQ_conflict = await generateClarifyQuestion(text, "conflict") ?? "🤝 衝突發生在哪個管道？";
+    await sendResponse(userId, replyToken, clarifyQ_conflict, [
+      { label: "👥 LINE 群組", data: "action=CONFLICT_CHANNEL&value=group" },
+      { label: "💬 LINE 私訊", data: "action=CONFLICT_CHANNEL&value=private" },
+      { label: "📞 電話", data: "action=CONFLICT_CHANNEL&value=phone" },
+      { label: "🤝 當面", data: "action=CONFLICT_CHANNEL&value=face" },
+      { label: "⚡ 直接生成", data: "action=SKIP_CLARIFY" },
+    ]);
+    return;
+  }
+
+  if (user.userState === "AWAITING_PARENT_INPUT") {
+    await updateDoc(doc(getDb(), "users", userId), {
+      userState: "AWAITING_PARENT_CLARIFY",
+      pendingInput: JSON.stringify({ type: "parent_daily", text, situationType: "daily" }),
+    });
+    const clarifyQ_parent = await generateClarifyQuestion(text, "parent_daily") ?? "💬 您希望這封回覆達到？";
+    await sendResponse(userId, replyToken, clarifyQ_parent, [
+      { label: "🔍 了解情況", data: "action=PARENT_GOAL&value=understand" },
+      { label: "🤝 表達配合", data: "action=PARENT_GOAL&value=cooperate" },
+      { label: "🙏 婉轉拒絕", data: "action=PARENT_GOAL&value=decline" },
+      { label: "⚡ 直接生成", data: "action=SKIP_CLARIFY" },
+    ]);
+    return;
+  }
+
+  if (user.userState === "AWAITING_PARENT_URGENT_INPUT") {
+    await updateDoc(doc(getDb(), "users", userId), {
+      userState: "AWAITING_PARENT_CLARIFY",
+      pendingInput: JSON.stringify({ type: "parent_urgent", text, situationType: "urgent" }),
+    });
+    const clarifyQ_urgent = await generateClarifyQuestion(text, "parent_urgent") ?? "🚨 您希望這封回覆達到？";
+    await sendResponse(userId, replyToken, clarifyQ_urgent, [
+      { label: "🛡️ 保護孩子", data: "action=PARENT_GOAL&value=protect" },
+      { label: "🔍 了解情況", data: "action=PARENT_GOAL&value=understand" },
+      { label: "🔎 請重新調查", data: "action=PARENT_GOAL&value=investigate" },
+      { label: "⚡ 直接生成", data: "action=SKIP_CLARIFY" },
+    ]);
+    return;
+  }
+
+  if (user.userState === "AWAITING_PARENT_REPAIR_INPUT") {
+    await updateDoc(doc(getDb(), "users", userId), {
+      userState: "AWAITING_PARENT_CLARIFY",
+      pendingInput: JSON.stringify({ type: "parent_repair", text, situationType: "repair" }),
+    });
+    const clarifyQ_repair = await generateClarifyQuestion(text, "parent_repair") ?? "🤝 您希望這封回覆達到？";
+    await sendResponse(userId, replyToken, clarifyQ_repair, [
+      { label: "🙏 適度致歉", data: "action=PARENT_GOAL&value=apologize" },
+      { label: "💚 重建信任", data: "action=PARENT_GOAL&value=trust" },
+      { label: "🕊️ 表達善意", data: "action=PARENT_GOAL&value=goodwill" },
+      { label: "⚡ 直接生成", data: "action=SKIP_CLARIFY" },
+    ]);
+    return;
+  }
+  // ─────────────────────────────────────────────────────────
+
   try {
     // 1. Start loading animation (doesn't use replyToken)
     await startLoadingAnimation(userId);
-    
+
     // 2. Try to push "writing" message (doesn't use replyToken)
     // If push fails, we ignore it to ensure the final reply still works
     await pushMessage(userId, "🔍 正在為您撰寫內容，請稍候...");
@@ -411,6 +599,52 @@ async function handleStateMessage(userId: string, user: any, text: string, reply
   }
 }
 
+async function generateWithCleanup(userId: string, userType: string, type: string, data: any, replyToken: string) {
+  try {
+    await startLoadingAnimation(userId);
+    await pushMessage(userId, "🔍 正在為您撰寫內容，請稍候...");
+
+    const aiResponse = await generateAIContent(userId, userType, type, data);
+
+    await updateDoc(doc(getDb(), "users", userId), {
+      userState: null,
+      pendingInput: null,
+      lastGenInput: JSON.stringify({ userType, type, data }),
+    });
+
+    const isParent = userType === "parent";
+    const quickReplies = [
+      { label: "🔄 重新擬定", data: "action=REGENERATE" },
+      { label: "🏠 回主選單", data: "action=BACK_MENU" },
+    ];
+    if (isParent) {
+      const strategies = parseMultiStrategy(aiResponse);
+      await sendMultiResponse(userId, replyToken, strategies, quickReplies);
+    } else {
+      const finalResponse = `[v2.1] ${aiResponse}`;
+      await sendResponse(userId, replyToken, finalResponse, quickReplies);
+    }
+  } catch (error: any) {
+    console.error("Error in generateWithCleanup:", error);
+    await updateDoc(doc(getDb(), "users", userId), { userState: null, pendingInput: null });
+
+    const logStatus = error.logStatus ? `\n(Log: ${error.logStatus})` : "";
+    const errorMsg = error.message === "LIMIT_EXCEEDED"
+      ? "❌ 抱歉，您今天的免費額度（3次）已用完。請明天再試，或升級方案！"
+      : error.message === "AI_TIMEOUT"
+      ? "⏳ 抱歉，AI 回應超時了（可能因為內容過長或網路不穩），請再試一次！"
+      : error.message === "AI_BLOCKED"
+      ? "🛡️ 抱歉，AI 認為內容包含敏感詞彙（如喪假、衝突等）而拒絕回答，請嘗試更換措辭。"
+      : error.message === "AI_EMPTY_RESPONSE"
+      ? "📭 抱歉，AI 產生了空回應，請再試一次。"
+      : error.message === "GEMINI_API_KEY_MISSING"
+      ? "🔑 系統設定錯誤：遺失 AI 金鑰，請聯繫管理員。"
+      : `抱歉，生成內容時發生錯誤 [v2.1: ${error.message.substring(0, 30)}]，請稍後再試。`;
+
+    await sendResponse(userId, replyToken, errorMsg + logStatus);
+  }
+}
+
 async function handlePostback(userId: string, user: any, data: string, replyToken: string) {
   console.log(`Handling postback from ${userId}: ${data}`);
   const params = new URLSearchParams(data);
@@ -421,10 +655,19 @@ async function handlePostback(userId: string, user: any, data: string, replyToke
       const type = params.get("value");
       await updateDoc(doc(getDb(), "users", userId), { userType: type, userState: null });
       await replyText(userId, replyToken, type === "teacher" ? "✅ 已設定為老師版！" : "✅ 已設定為家長版！");
-      // Use push for menu after replyToken is used
-      await replyMainMenu(userId, type!);
+      // Auto-start child wizard for new parents without childProfile
+      if (type === "parent" && !user.childProfile) {
+        await pushMessage(userId, "👶 歡迎！讓我先幫您設定孩子的基本資料，讓 AI 回覆更貼近您的情況。");
+        await startChildWizard(userId, null, null);
+      } else {
+        await replyMainMenu(userId, type!);
+      }
+    } else if (action === "REGENERATE") {
+      const lastGen = user.lastGenInput ? JSON.parse(user.lastGenInput) : null;
+      if (!lastGen) { await replyMainMenu(userId, user.userType, replyToken); return; }
+      await generateWithCleanup(userId, lastGen.userType, lastGen.type, lastGen.data, replyToken);
     } else if (action === "BACK_MENU") {
-      await updateDoc(doc(getDb(), "users", userId), { userState: null });
+      await updateDoc(doc(getDb(), "users", userId), { userState: null, pendingInput: null, lastGenInput: null });
       await replyMainMenu(userId, user.userType, replyToken);
     } else if (action === "MENU_NOTIFY") {
       await updateDoc(doc(getDb(), "users", userId), { userState: "AWAITING_NOTIFY_INPUT" });
@@ -454,6 +697,10 @@ async function handlePostback(userId: string, user: any, data: string, replyToke
             ? `\n班級：${style.className}  開場白：${style.opening || "未設定"}`
             : "\n溝通風格：尚未設定")
         : "";
+      const cp = !isTeacher ? (user.childProfile || {}) : null;
+      const childLine = cp !== null
+        ? `\n\n【孩子資料】\n• 孩子稱呼：${cp.childName || "未設定"}\n• 年級班級：${cp.grade || "未設定"}\n• 特質備註：${cp.traits || "未設定"}\n• 班導師：${cp.teacherName || "未設定"}`
+        : "";
       const buttons = isTeacher
         ? [
             { label: "🎨 設定溝通風格", data: "action=MENU_STYLE" },
@@ -461,13 +708,14 @@ async function handlePostback(userId: string, user: any, data: string, replyToke
             { label: "🏠 回主選單", data: "action=BACK_MENU" },
           ]
         : [
+            { label: "👶 更新孩子資料", data: "action=P_CHILD_SETUP" },
             { label: "🔄 切換身分", data: "action=RESET_TYPE" },
             { label: "🏠 回主選單", data: "action=BACK_MENU" },
           ];
       await sendResponse(
         userId,
         replyToken,
-        `👤 帳號資訊\n──────────────\n方案：${user.plan}\n今日已用：${usage} / 3 次${styleLine}`,
+        `👤 帳號資訊\n──────────────\n方案：${user.plan}\n今日已用：${usage} / 3 次${styleLine}${childLine}`,
         buttons
       );
     } else if (action === "MENU_STYLE") {
@@ -529,11 +777,67 @@ async function handlePostback(userId: string, user: any, data: string, replyToke
         `✅ 開場白保留：「${style.opening || "未設定"}」\n\n第 3 步：有沒有你不想出現在文字裡的詞語？\n（例如：麻煩家長、請務必）\n\n多個詞以逗號分隔，也可以直接跳過。`,
         [{ label: "⏭️ 跳過這步", data: "action=STYLE_SKIP_AVOID" }]
       );
+    } else if (action === "P_CHILD_SETUP") {
+      if (user.userType !== "parent") {
+        await replyMainMenu(userId, user.userType, replyToken);
+        return;
+      }
+      await startChildWizard(userId, replyToken, user.childProfile);
+    } else if (action === "CHILD_WIZARD_SKIP") {
+      const stateMap: any = {
+        AWAITING_CHILD_NAME: "AWAITING_CHILD_GRADE",
+        AWAITING_CHILD_GRADE: "AWAITING_CHILD_TRAITS",
+        AWAITING_CHILD_TRAITS: "AWAITING_CHILD_TEACHER",
+        AWAITING_CHILD_TEACHER: null,
+      };
+      const promptMap: any = {
+        AWAITING_CHILD_GRADE: `第 2 步：孩子的年級班級是？\n（例如：國小三年級甲班、二年一班）`,
+        AWAITING_CHILD_TRAITS: `第 3 步：孩子有什麼特質或備註嗎？\n（例如：活潑好動、對數學有興趣、有輕微過動）`,
+        AWAITING_CHILD_TEACHER: `第 4 步：班導師怎麼稱呼？\n（例如：王老師、陳老師）`,
+      };
+      const currentState = user.userState;
+      if (!stateMap.hasOwnProperty(currentState)) {
+        await replyMainMenu(userId, user.userType, replyToken);
+        return;
+      }
+      const nextState = stateMap[currentState];
+      if (nextState === null) {
+        // Done
+        await updateDoc(doc(getDb(), "users", userId), { userState: null });
+        await sendChildProfileComplete(userId, replyToken, user.childProfile || {});
+      } else {
+        await updateDoc(doc(getDb(), "users", userId), { userState: nextState });
+        await sendResponse(userId, replyToken,
+          `⏭️ 已跳過\n\n${promptMap[nextState]}`,
+          [{ label: "⏭️ 跳過這步", data: "action=CHILD_WIZARD_SKIP" }]
+        );
+      }
     } else if (action === "RESET_TYPE") {
       await sendResponse(userId, replyToken, "請選擇您的新身份：", [
         { label: "👩‍🏫 我是老師", data: "action=SET_TYPE&value=teacher" },
         { label: "👨‍👩‍👧 我是家長", data: "action=SET_TYPE&value=parent" }
       ]);
+    } else if (action === "NOTIFY_TONE") {
+      const pending = user.pendingInput ? JSON.parse(user.pendingInput) : null;
+      if (!pending) { await replyMainMenu(userId, user.userType, replyToken); return; }
+      await generateWithCleanup(userId, "teacher", "notify", { content: pending.text, tone: params.get("value") }, replyToken);
+    } else if (action === "REPLY_EMOTION") {
+      const pending = user.pendingInput ? JSON.parse(user.pendingInput) : null;
+      if (!pending) { await replyMainMenu(userId, user.userType, replyToken); return; }
+      await generateWithCleanup(userId, "teacher", "reply", { parentMsg: pending.text, emotion: params.get("value") }, replyToken);
+    } else if (action === "CONFLICT_CHANNEL") {
+      const pending = user.pendingInput ? JSON.parse(user.pendingInput) : null;
+      if (!pending) { await replyMainMenu(userId, user.userType, replyToken); return; }
+      await generateWithCleanup(userId, "teacher", "conflict", { situation: pending.text, channel: params.get("value") }, replyToken);
+    } else if (action === "PARENT_GOAL") {
+      const pending = user.pendingInput ? JSON.parse(user.pendingInput) : null;
+      if (!pending) { await replyMainMenu(userId, user.userType, replyToken); return; }
+      await generateWithCleanup(userId, "parent", pending.type, { teacherMsg: pending.text, parentGoal: params.get("value") }, replyToken);
+    } else if (action === "SKIP_CLARIFY") {
+      const pending = user.pendingInput ? JSON.parse(user.pendingInput) : null;
+      if (!pending) { await replyMainMenu(userId, user.userType, replyToken); return; }
+      const genUserType = ["notify", "reply", "conflict"].includes(pending.type) ? "teacher" : "parent";
+      await generateWithCleanup(userId, genUserType, pending.type, pending.text, replyToken);
     } else {
       await replyText(userId, replyToken, "功能開發中，敬請期待！");
     }
@@ -616,6 +920,73 @@ async function sendResponse(userId: string, replyToken: string | null, text: str
     return true;
   } catch (error: any) {
     console.error(`[MSG] Push failed for ${userId}:`, error.response?.data || error.message);
+    return false;
+  }
+}
+
+function parseMultiStrategy(text: string): string[] {
+  const markers = ["【策略一：", "【策略二：", "【策略三："];
+  const indices = markers.map(m => text.indexOf(m));
+  if (indices.some(i => i === -1)) return [text];
+  const strategies: string[] = [];
+  for (let i = 0; i < 3; i++) {
+    const start = indices[i];
+    const end = i < 2 ? indices[i + 1] : text.length;
+    strategies.push(text.slice(start, end).trim());
+  }
+  return strategies;
+}
+
+async function sendMultiResponse(
+  userId: string,
+  replyToken: string | null,
+  texts: string[],
+  quickReplies: any[] = []
+) {
+  const messages: any[] = texts.map((t, idx) => {
+    const msg: any = { type: "text", text: t };
+    if (idx === texts.length - 1 && quickReplies.length > 0) {
+      msg.quickReply = {
+        items: quickReplies.map(i => ({
+          type: "action",
+          action: { type: "postback", label: i.label, data: i.data, displayText: i.label }
+        }))
+      };
+    }
+    return msg;
+  });
+
+  if (replyToken) {
+    try {
+      await axios.post("https://api.line.me/v2/bot/message/reply", {
+        replyToken,
+        messages
+      }, {
+        headers: { Authorization: `Bearer ${LINE_CHANNEL_ACCESS_TOKEN}` }
+      });
+      console.log(`[MSG] Multi-strategy sent via REPLY to ${userId}`);
+      return true;
+    } catch (error: any) {
+      console.error(`[MSG] Multi-strategy reply failed for ${userId}, falling back to push:`, error.response?.data || error.message);
+    }
+  }
+
+  if (!userId) {
+    console.error("[MSG] Cannot push multi-strategy: userId is empty");
+    return false;
+  }
+
+  try {
+    await axios.post("https://api.line.me/v2/bot/message/push", {
+      to: userId,
+      messages
+    }, {
+      headers: { Authorization: `Bearer ${LINE_CHANNEL_ACCESS_TOKEN}` }
+    });
+    console.log(`[MSG] Multi-strategy sent via PUSH to ${userId}`);
+    return true;
+  } catch (error: any) {
+    console.error(`[MSG] Multi-strategy push failed for ${userId}:`, error.response?.data || error.message);
     return false;
   }
 }
@@ -727,7 +1098,7 @@ ${avoid}
 繁體中文，語氣專業冷靜，整體 250～380字。`;
 }
 
-function buildParentPrompt(data: any, style: any) {
+function buildParentPrompt(data: any, style: any, childProfile?: any) {
   const typeGuide: any = {
     daily:   '這是日常親師溝通，語氣友好有禮即可。',
     urgent:  '這是緊急或衝突情況，需要保護家長立場，措辭謹慎但不激進。',
@@ -735,15 +1106,26 @@ function buildParentPrompt(data: any, style: any) {
     absence: '這是請假或特殊說明，語氣得體、說明清楚即可。',
   };
   const goalLabels: any = {
-    understand: '先了解完整情況再表態',
-    cooperate:  '表達配合意願',
-    protect:    '保護孩子立場，請老師重新調查',
-    apologize:  '適度致歉，修復關係',
+    understand:   '先了解完整情況再表態',
+    cooperate:    '表達配合意願',
+    decline:      '婉轉拒絕老師的要求',
+    protect:      '保護孩子立場，請老師重新調查',
+    investigate:  '請老師重新調查事件始末',
+    apologize:    '適度致歉，修復關係',
+    trust:        '重建彼此信任',
+    goodwill:     '表達善意，化解嫌隙',
   };
 
   const situationType = typeGuide[data.situationType] || '日常溝通';
   const teacherMsg = data.teacherMsg || "老師傳來的訊息";
   const parentGoal = goalLabels[data.parentGoal] || '了解情況';
+
+  const cpLines = [
+    childProfile?.childName ? `【孩子稱呼】${childProfile.childName}` : '',
+    childProfile?.grade ? `【年級班級】${childProfile.grade}` : '',
+    childProfile?.traits ? `【孩子特質】${childProfile.traits}` : '',
+    childProfile?.teacherName ? `【班導師稱呼】${childProfile.teacherName}` : '',
+  ].filter(Boolean).join('\n');
 
   return `你是台灣家長的親師溝通顧問，幫家長找到最好的回覆措辭。
 你了解台灣親師文化，知道怎麼讓家長既保護孩子，又不傷害與老師的關係。
@@ -754,13 +1136,112 @@ ${teacherMsg}
 
 【家長希望達到的目的】${parentGoal}
 ${data.context ? `【補充背景】${data.context}` : ''}
+${cpLines}
 ${style?.opening ? `【慣用開場白】${style.opening}` : ''}
 
 直接輸出回覆內容，不加說明。
 語氣得體，100～180字，繁體中文。`;
 }
 
+function buildParentMultiStrategyPrompt(data: any, style: any, childProfile?: any) {
+  const typeGuide: any = {
+    daily:   '這是日常親師溝通，語氣友好有禮即可。',
+    urgent:  '這是緊急或衝突情況，需要保護家長立場，措辭謹慎但不激進。',
+    repair:  '這是修復親師關係，語氣要真誠、低調，創造和解空間。',
+    absence: '這是請假或特殊說明，語氣得體、說明清楚即可。',
+  };
+  const goalLabels: any = {
+    understand:   '先了解完整情況再表態',
+    cooperate:    '表達配合意願',
+    decline:      '婉轉拒絕老師的要求',
+    protect:      '保護孩子立場，請老師重新調查',
+    investigate:  '請老師重新調查事件始末',
+    apologize:    '適度致歉，修復關係',
+    trust:        '重建彼此信任',
+    goodwill:     '表達善意，化解嫌隙',
+  };
+
+  const situationType = typeGuide[data.situationType] || '日常溝通';
+  const teacherMsg = data.teacherMsg || "老師傳來的訊息";
+  const parentGoal = goalLabels[data.parentGoal] || '了解情況';
+
+  const cpLines = [
+    childProfile?.childName ? `【孩子稱呼】${childProfile.childName}` : '',
+    childProfile?.grade ? `【年級班級】${childProfile.grade}` : '',
+    childProfile?.traits ? `【孩子特質】${childProfile.traits}` : '',
+    childProfile?.teacherName ? `【班導師稱呼】${childProfile.teacherName}` : '',
+  ].filter(Boolean).join('\n');
+
+  return `你是台灣家長的親師溝通顧問，幫家長找到最好的回覆措辭。
+你了解台灣親師文化，知道怎麼讓家長既保護孩子，又不傷害與老師的關係。
+
+【情況類型】${situationType}
+【事件描述 / 老師訊息】
+${teacherMsg}
+
+【家長希望達到的目的】${parentGoal}
+${data.context ? `【補充背景】${data.context}` : ''}
+${cpLines}
+${style?.opening ? `【慣用開場白】${style.opening}` : ''}
+
+請針對以上情境，提供三種不同的回覆策略，每種約 80～120 字，繁體中文。
+每種策略要有明顯不同的目標或語氣取向（例如：委婉溝通／積極配合／保護立場）。
+策略名稱由你自由命名，體現真正的差異化。
+格式如下（直接輸出，不加任何說明或前言）：
+
+【策略一：{策略名稱}】
+{回覆內容}
+
+【策略二：{策略名稱}】
+{回覆內容}
+
+【策略三：{策略名稱}】
+{回覆內容}`;
+}
+
 // --- AI Generation Logic ---
+
+async function generateClarifyQuestion(text: string, type: string): Promise<string | null> {
+  const focusHintMap: Record<string, string> = {
+    notify:        "語氣偏好（正式專業／適中親切／溫馨活潑）",
+    reply:         "家長目前情緒（平穩／擔憂／不滿／焦慮）",
+    conflict:      "溝通管道（群組／私訊／電話／當面）",
+    parent_daily:  "家長想達到的目的（了解情況／表達配合／婉轉拒絕）",
+    parent_urgent: "家長的優先事項（保護孩子／了解情況／請老師重新調查）",
+    parent_repair: "修復目標（適度致歉／重建信任／表達善意）",
+  };
+  const focusHint = focusHintMap[type] ?? "使用者的目標";
+
+  const prompt = `根據以下情況，用一句話（15字以內，繁體中文）問一個澄清問題，幫助了解使用者需求。
+只輸出問題本身，不加任何說明、表情符號或標點符號以外的字。
+
+情況：${text.substring(0, 200)}
+問題方向：${focusHint}`;
+
+  try {
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("CLARIFY_TIMEOUT")), 6000)
+    );
+    const aiPromise = getGenAI().models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: [{ parts: [{ text: prompt }] }],
+      config: {
+        safetySettings: [
+          { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+          { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
+          { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
+          { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+        ]
+      }
+    });
+    const response: any = await Promise.race([aiPromise, timeoutPromise]);
+    const question = response.text?.trim();
+    if (question && question.length > 0 && question.length <= 40) return question;
+  } catch (_) {
+    // fall through to default
+  }
+  return null;
+}
 
 async function generateAIContent(userId: string, userType: string, type: string, data: any) {
   console.log(`Generating AI content for ${userId} (${userType}, ${type})`);
@@ -789,7 +1270,7 @@ async function generateAIContent(userId: string, userType: string, type: string,
     const situationTypeMap: any = { parent_daily: "daily", parent_urgent: "urgent", parent_repair: "repair" };
     const situationType = situationTypeMap[type] || "daily";
     const dataObj = typeof data === "string" ? { teacherMsg: data, situationType } : { ...data, situationType };
-    prompt = buildParentPrompt(dataObj, styleJson);
+    prompt = buildParentMultiStrategyPrompt(dataObj, styleJson, userData.childProfile);
   }
 
   console.log(`Calling Gemini API with prompt length: ${prompt.length}`);
