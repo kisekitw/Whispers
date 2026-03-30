@@ -558,8 +558,7 @@ async function replyMainMenu(userId: string, userType: string, replyToken: strin
       { label: "📢 家長通知", data: "action=MENU_NOTIFY" },
       { label: "💬 回覆家長", data: "action=MENU_REPLY" },
       { label: "🤝 衝突處理", data: "action=MENU_CONFLICT" },
-      { label: "👤 帳號資訊", data: "action=MENU_ACCOUNT" },
-      { label: "🎨 溝通風格", data: "action=MENU_STYLE" }
+      { label: "👤 帳號資訊", data: "action=MENU_ACCOUNT" }
     ]);
   } else {
     await sendResponse(userId, replyToken, "需要什麼幫助？", [
